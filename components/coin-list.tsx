@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -63,6 +64,8 @@ const mockCoins: Coin[] = [
 ]
 
 export function CoinList() {
+  const router = useRouter()
+
   return (
     <div className="rounded-xl border border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -83,6 +86,7 @@ export function CoinList() {
               return (
                 <tr
                   key={coin.id}
+                  onClick={() => router.push(`/dashboard/coin/${coin.symbol.toLowerCase()}`)}
                   className="border-b border-primary/10 hover:bg-primary/5 transition-colors cursor-pointer group"
                 >
                   <td className="p-4 text-gray-400">{index + 1}</td>
