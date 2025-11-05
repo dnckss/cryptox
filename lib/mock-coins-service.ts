@@ -4,6 +4,7 @@
  */
 
 import { COIN_DEFINITIONS, MockCoin, getCoinBySymbol, getCoinById } from "./mock-coins"
+import { getPriceAdjustment, applyPriceAdjustment } from "./utils/coin-price-adjust"
 
 // 가격 히스토리 타입
 interface PriceHistory {
@@ -56,9 +57,12 @@ class SeededRandom {
  * @returns 다음 변동 정보
  */
 export function generateNextPriceChange(coinId: string): NextPriceChange {
-  // 코인 ID를 시드로 사용
+  // 코인 ID를 시드로 사용 (일관성을 위해 Date.now() 제거)
   const seed = coinId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const random = new SeededRandom(seed + Date.now())
+  // 기존 nextChange가 있으면 그 시간을 기준으로, 없으면 현재 시간 사용
+  const existingChange = nextPriceChanges.get(coinId)
+  const timeSeed = existingChange?.scheduledAt || Date.now()
+  const random = new SeededRandom(seed + Math.floor(timeSeed / 1000)) // 초 단위로 반올림하여 일관성 확보
   
   // 1. 변동성 범위 선택 (50% 확률로 1~5% 또는 6~10%)
   const useLowRange = random.next() < 0.5 // 50% 확률
@@ -111,7 +115,13 @@ export function getCurrentPrice(coin: MockCoin): number {
     
     // 가격 변동 적용
     const changePercent = nextChange.volatility * nextChange.direction
-    const newPrice = currentPrice * (1 + changePercent / 100)
+    let newPrice = currentPrice * (1 + changePercent / 100)
+    
+    // 관리자 가격 조절 적용 (3초 후부터 적용)
+    const adjustment = getPriceAdjustment(coin.symbol.toLowerCase())
+    if (adjustment !== null) {
+      newPrice = applyPriceAdjustment(coin.symbol.toLowerCase(), newPrice)
+    }
     
     // 최소 가격 제한 (0.001원 이하로 떨어지지 않도록)
     const minPrice = 0.001
@@ -130,14 +140,22 @@ export function getCurrentPrice(coin: MockCoin): number {
   }
   
   // 아직 변동 시간이 안 지났으면 캐시된 가격 반환
+  let basePrice = cached?.price || coin.basePrice
+  
+  // 관리자 가격 조절 적용 (3초 후부터 적용)
+  const adjustment = getPriceAdjustment(coin.symbol.toLowerCase())
+  if (adjustment !== null) {
+    basePrice = applyPriceAdjustment(coin.symbol.toLowerCase(), basePrice)
+  }
+  
   if (cached) {
-    return cached.price
+    return basePrice
   }
   
   // 캐시가 없으면 기본 가격 사용
-  const basePrice = coin.basePrice
-  priceCache.set(coin.id, { price: basePrice, lastUpdate: now })
-  return basePrice
+  const defaultPrice = coin.basePrice
+  priceCache.set(coin.id, { price: defaultPrice, lastUpdate: now })
+  return defaultPrice
 }
 
 /**

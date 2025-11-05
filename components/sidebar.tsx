@@ -67,6 +67,7 @@ export function Sidebar({ onMenuClick, showMenuButton = false }: SidebarProps = 
   const adminMenuItems = [
     { href: "/dashboard/admin/charges", label: "충전 관리", icon: Shield },
     { href: "/dashboard/admin/users", label: "사용자 통계", icon: Users },
+    { href: "/dashboard/admin/coins", label: "코인 관리", icon: TrendingUp },
   ]
 
   // 현재 사용자에 맞는 메뉴 선택
@@ -100,26 +101,33 @@ export function Sidebar({ onMenuClick, showMenuButton = false }: SidebarProps = 
 
       {/* 메뉴 */}
       <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={isActive ? "default" : "ghost"}
-                className={cn(
-                  "w-full justify-start gap-3 text-white",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-primary/10"
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Button>
-            </Link>
-          )
-        })}
+        {loading ? (
+          // 로딩 중일 때는 아무것도 표시하지 않음 (관리자 권한 체크 완료 후 올바른 메뉴 표시)
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-pulse text-gray-400 text-sm">로딩 중...</div>
+          </div>
+        ) : (
+          menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-3 text-white",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-primary/10"
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </Button>
+              </Link>
+            )
+          })
+        )}
       </nav>
 
       {/* 로그아웃 */}

@@ -10,6 +10,7 @@ interface UserStat {
   userId: string
   nickname: string | null
   email: string | null
+  displayName: string | null
   totalAssets: number
   totalProfit: number
   profitRate: number
@@ -60,6 +61,7 @@ export function AdminUsersPage() {
     const term = searchTerm.toLowerCase()
     return (
       (user.nickname?.toLowerCase().includes(term) || false) ||
+      (user.displayName?.toLowerCase().includes(term) || false) ||
       user.userId.toLowerCase().includes(term) ||
       (user.email?.toLowerCase().includes(term) || false)
     )
@@ -221,7 +223,7 @@ export function AdminUsersPage() {
                       닉네임
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                      이메일
+                      Display Name
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">
                       총 자산
@@ -263,7 +265,7 @@ export function AdminUsersPage() {
                         {user.nickname || `사용자${user.userId.slice(0, 8)}`}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-300">
-                        {user.email || "-"}
+                        {user.displayName || "-"}
                       </td>
                       <td className="py-3 px-4 text-sm text-white font-bold text-right">
                         ₩{user.totalAssets.toLocaleString()}

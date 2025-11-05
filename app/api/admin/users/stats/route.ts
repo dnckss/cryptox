@@ -48,34 +48,45 @@ export async function GET() {
     // 모든 사용자 ID 수집
     const userIds = allAssets.map((asset) => asset.user_id)
 
-    // 사용자 이메일 조회
+    // 사용자 이메일 및 display name 조회
     // 방법 1: Service Role Key로 직접 조회 (가장 확실한 방법)
     // 방법 2: RPC 함수 사용 (RPC 함수가 생성되어 있다면)
     let emailMap = new Map<string, string>()
+    let displayNameMap = new Map<string, string>()
     
     try {
       // Service Role Key가 있으면 직접 조회 (가장 확실한 방법)
       if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.log("🔑 Service Role Key 사용하여 이메일 조회 시작...")
+        console.log("🔑 Service Role Key 사용하여 사용자 정보 조회 시작...")
         const adminSupabase = createAdminClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY
         )
         
-        // 각 사용자별로 이메일 조회
+        // 각 사용자별로 정보 조회
         for (const userId of userIds) {
           try {
             const { data: user, error } = await adminSupabase.auth.admin.getUserById(userId)
-            if (!error && user?.user?.email) {
-              emailMap.set(userId, user.user.email)
+            if (!error && user?.user) {
+              if (user.user.email) {
+                emailMap.set(userId, user.user.email)
+              }
+              // display name 조회 (user_metadata에서)
+              const displayName = user.user.user_metadata?.display_name || 
+                                  user.user.user_metadata?.full_name || 
+                                  user.user.user_metadata?.name ||
+                                  null
+              if (displayName) {
+                displayNameMap.set(userId, displayName)
+              }
             } else if (error) {
-              console.error(`❌ Failed to fetch email for user ${userId}:`, error)
+              console.error(`❌ Failed to fetch user info for user ${userId}:`, error)
             }
           } catch (err) {
-            console.error(`❌ Error fetching email for user ${userId}:`, err)
+            console.error(`❌ Error fetching user info for user ${userId}:`, err)
           }
         }
-        console.log(`✅ Service Role Key로 ${emailMap.size}개 이메일 조회 완료`)
+        console.log(`✅ Service Role Key로 ${emailMap.size}개 이메일, ${displayNameMap.size}개 display name 조회 완료`)
       } else {
         // Service Role Key가 없으면 RPC 함수 시도
         console.log("⚠️ SUPABASE_SERVICE_ROLE_KEY가 없습니다. RPC 함수 시도...")
@@ -94,15 +105,15 @@ export async function GET() {
           console.log(`✅ RPC 함수로 ${emailMap.size}개 이메일 조회 완료`)
         } else if (emailError) {
           console.error("❌ RPC 함수 호출 실패:", emailError)
-          console.log("⚠️ 이메일 조회를 위해 SUPABASE_SERVICE_ROLE_KEY를 .env.local에 추가하세요")
+          console.log("⚠️ 사용자 정보 조회를 위해 SUPABASE_SERVICE_ROLE_KEY를 .env.local에 추가하세요")
         }
       }
     } catch (error) {
-      console.error("❌ Error fetching user emails:", error)
-      // 에러 발생해도 계속 진행 (이메일 없이 표시)
+      console.error("❌ Error fetching user info:", error)
+      // 에러 발생해도 계속 진행 (정보 없이 표시)
     }
 
-    console.log(`📧 최종 이메일 맵: ${emailMap.size}개 사용자 이메일 수집`)
+    console.log(`📧 최종 사용자 정보: ${emailMap.size}개 이메일, ${displayNameMap.size}개 display name 수집`)
 
     // 사용자 통계 계산
     const userStats = await Promise.all(
@@ -116,12 +127,13 @@ export async function GET() {
           .eq("user_id", userId)
           .single()
 
-        // 사용자 이메일 조회
+        // 사용자 이메일 및 display name 조회
         const userEmail = emailMap.get(userId) || null
+        const displayName = displayNameMap.get(userId) || null
         
-        // 디버깅: 이메일 조회 확인
-        if (!userEmail) {
-          console.log(`⚠️ 이메일 없음: userId=${userId}, emailMap.has=${emailMap.has(userId)}`)
+        // 디버깅: 사용자 정보 조회 확인
+        if (!userEmail && !displayName) {
+          console.log(`⚠️ 사용자 정보 없음: userId=${userId}`)
         }
 
         // 관리자 계정이면 제외 (프로필 기반 또는 이메일 기반)
@@ -209,6 +221,7 @@ export async function GET() {
           userId,
           nickname: profile?.nickname || null,
           email: userEmail,
+          displayName: displayName || null,
           totalAssets: Math.round(totalAssets),
           totalProfit: Math.round(totalProfit),
           profitRate: Number(profitRate.toFixed(2)),

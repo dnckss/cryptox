@@ -4,6 +4,7 @@ import { getCoinDataBySymbol } from "@/lib/mock-coins-service"
 /**
  * GET /api/coins/[symbol]
  * 특정 코인의 상세 정보 가져오기 (모의 데이터)
+ * 각 코인의 개별 가격 변동 타이밍을 반영하여 정확한 가격 반환
  */
 export async function GET(
   request: Request,
@@ -11,6 +12,8 @@ export async function GET(
 ) {
   try {
     const { symbol } = await params
+    
+    // 개별 코인 데이터 가져오기 (각 코인의 개별 변동 타이밍 반영)
     const coinData = getCoinDataBySymbol(symbol)
 
     if (!coinData) {
@@ -23,11 +26,12 @@ export async function GET(
     // TVL은 시가총액의 일정 비율로 계산
     const tvl = coinData.marketCap * 0.1 // 시가총액의 10% 가정
 
+    // 거래 페이지와 동일한 형식으로 데이터 반환
     const formattedData = {
       id: coinData.id,
       name: coinData.name,
       symbol: coinData.symbol,
-      price: coinData.price,
+      price: coinData.price, // 개별 코인의 현재 가격 (각 코인의 변동 타이밍 반영)
       change1h: coinData.change1h,
       change24h: coinData.change1d, // 24h = 1d
       change1w: coinData.change1w,

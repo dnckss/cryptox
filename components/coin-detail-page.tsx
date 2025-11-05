@@ -616,50 +616,84 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
   }
 
-  // 코인 데이터를 주기적으로 업데이트 (1~5초 랜덤 간격)
+  // WebSocket을 통한 실시간 가격 업데이트
   useEffect(() => {
-    if (loading) return
+    if (loading || !coin) return
 
-    let timeoutId: NodeJS.Timeout | null = null
-    let isMounted = true
-    
-    const scheduleUpdate = async () => {
-      if (!isMounted) return
-      
+    // 가격 업데이트 수신 핸들러
+    const handleUpdate = (updates: any[]) => {
+      const update = updates.find(
+        (u: any) =>
+          u.coinId === coin.id ||
+          u.symbol?.toUpperCase() === symbol.toUpperCase()
+      )
+      if (update) {
+        setCoin((prev) => ({
+          ...prev,
+          price: update.price,
+          change1h: update.change1h,
+          change24h: update.change24h,
+          change1w: update.change1w,
+          change24hValue: parseFloat((update.change24h * update.price / 100).toFixed(2)),
+        }))
+      }
+    }
+
+    // 초기 데이터 수신 핸들러
+    const handleInitial = (initialCoins: any[]) => {
+      const initialCoin = initialCoins.find(
+        (c: any) =>
+          c.coinId === coin.id ||
+          c.symbol?.toUpperCase() === symbol.toUpperCase()
+      )
+      if (initialCoin) {
+        setCoin((prev) => ({
+          ...prev,
+          price: initialCoin.price,
+          change1h: initialCoin.change1h,
+          change24h: initialCoin.change24h,
+          change1w: initialCoin.change1w,
+          change24hValue: parseFloat((initialCoin.change24h * initialCoin.price / 100).toFixed(2)),
+        }))
+      }
+    }
+
+    // WebSocket 연결 설정
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    const host = window.location.host
+    const wsUrl = `${protocol}//${host}/api/ws/coins`
+
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log("✅ 코인 상세 페이지 WebSocket 연결 성공")
+    }
+
+    ws.onmessage = (event) => {
       try {
-        const response = await fetch(`/api/coins/${symbol}`)
-        if (response.ok && isMounted) {
-          const result = await response.json()
-          if (result.data && result.data.price > 0) {
-            // 가격만 업데이트 (통계는 고정값 유지)
-            setCoin(prev => ({
-              ...prev,
-              price: result.data.price,
-              change1h: result.data.change1h,
-              change24h: result.data.change24h,
-              change1w: result.data.change1w,
-              change24hValue: result.data.change24hValue,
-            }))
-          }
+        const message = JSON.parse(event.data)
+        if (message.type === "initial") {
+          handleInitial(message.data)
+        } else if (message.type === "update") {
+          handleUpdate(message.data)
         }
       } catch (error) {
-        console.error("Error updating coin data:", error)
+        console.error("WebSocket 메시지 파싱 오류:", error)
       }
-      
-      if (!isMounted) return
-      
-      // 1~5초 랜덤 간격으로 다음 업데이트 스케줄
-      const randomDelay = Math.floor(Math.random() * 4000) + 1000 // 1~5초
-      timeoutId = setTimeout(scheduleUpdate, randomDelay)
     }
 
-    scheduleUpdate()
+    ws.onerror = (error) => {
+      console.error("WebSocket 에러:", error)
+    }
+
+    ws.onclose = () => {
+      console.log("WebSocket 연결 종료")
+    }
 
     return () => {
-      isMounted = false
-      if (timeoutId) clearTimeout(timeoutId)
+      ws.close()
     }
-  }, [symbol, loading])
+  }, [symbol, loading, coin])
 
   // 거래 내역 조회 함수
   const fetchTransactions = async () => {

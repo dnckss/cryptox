@@ -149,59 +149,93 @@ export function TradingPage() {
     fetchInitialCoins()
   }, [])
 
-  // 가격만 업데이트 (1~5초 랜덤 간격)
+  // WebSocket을 통한 실시간 가격 업데이트
   useEffect(() => {
     if (loading || coins.length === 0) return
 
-    let timeoutId: NodeJS.Timeout | null = null
-    let isMounted = true
-    
-    const updatePrices = async () => {
-      if (!isMounted) return
-      
-      try {
-        const response = await fetch("/api/coins?page=1&perPage=100")
-        if (response.ok && isMounted) {
-          const result = await response.json()
-          const marketData = result.data || []
-
-          if (marketData && marketData.length > 0) {
-            // 가격과 변동률만 업데이트 (테이블 전체 리렌더링 방지)
-            setCoins(prevCoins => 
-              prevCoins.map(prevCoin => {
-                const updatedCoin = marketData.find((c: any) => c.id === prevCoin.id)
-                if (updatedCoin) {
-                  return {
-                    ...prevCoin,
-                    price: updatedCoin.current_price || prevCoin.price,
-                    change1h: updatedCoin.price_change_percentage_1h_in_currency || prevCoin.change1h,
-                    change1d: updatedCoin.price_change_percentage_24h_in_currency || prevCoin.change1d,
-                    change1w: updatedCoin.price_change_percentage_7d_in_currency || prevCoin.change1w,
-                  }
-                }
-                return prevCoin
-              })
-            )
+    // 초기 데이터 수신 핸들러
+    const handleInitial = (initialCoins: any[]) => {
+      // 초기 데이터로 코인 목록 업데이트 (심볼 매칭)
+      setCoins((prevCoins) =>
+        prevCoins.map((prevCoin) => {
+          const initialCoin = initialCoins.find(
+            (c: any) =>
+              c.coinId === prevCoin.id ||
+              c.symbol?.toUpperCase() === prevCoin.symbol.toUpperCase()
+          )
+          if (initialCoin) {
+            return {
+              ...prevCoin,
+              price: initialCoin.price,
+              change1h: initialCoin.change1h,
+              change1d: initialCoin.change24h,
+              change1w: initialCoin.change1w,
+            }
           }
-        }
-      } catch (error) {
-        console.error("가격 업데이트 오류:", error)
-      }
-      
-      if (!isMounted) return
-      
-      // 1~5초 랜덤 간격으로 다음 업데이트 스케줄
-      const randomDelay = Math.floor(Math.random() * 4000) + 1000 // 1~5초
-      timeoutId = setTimeout(updatePrices, randomDelay)
+          return prevCoin
+        })
+      )
     }
 
-    // 첫 업데이트 시작
-    const randomDelay = Math.floor(Math.random() * 4000) + 1000
-    timeoutId = setTimeout(updatePrices, randomDelay)
+    // 가격 업데이트 수신 핸들러
+    const handleUpdate = (updates: any[]) => {
+      // 업데이트된 코인만 반영
+      setCoins((prevCoins) =>
+        prevCoins.map((prevCoin) => {
+          const update = updates.find(
+            (u: any) =>
+              u.coinId === prevCoin.id ||
+              u.symbol?.toUpperCase() === prevCoin.symbol.toUpperCase()
+          )
+          if (update) {
+            return {
+              ...prevCoin,
+              price: update.price,
+              change1h: update.change1h,
+              change1d: update.change24h,
+              change1w: update.change1w,
+            }
+          }
+          return prevCoin
+        })
+      )
+    }
+
+    // WebSocket 연결 설정
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    const host = window.location.host
+    const wsUrl = `${protocol}//${host}/api/ws/coins`
+
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log("✅ 거래 페이지 WebSocket 연결 성공")
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        if (message.type === "initial") {
+          handleInitial(message.data)
+        } else if (message.type === "update") {
+          handleUpdate(message.data)
+        }
+      } catch (error) {
+        console.error("WebSocket 메시지 파싱 오류:", error)
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error("WebSocket 에러:", error)
+    }
+
+    ws.onclose = () => {
+      console.log("WebSocket 연결 종료, 재연결 시도...")
+      // 자동 재연결은 브라우저가 처리하거나 필요시 추가
+    }
 
     return () => {
-      isMounted = false
-      if (timeoutId) clearTimeout(timeoutId)
+      ws.close()
     }
   }, [loading, coins.length])
 
