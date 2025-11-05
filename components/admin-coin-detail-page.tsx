@@ -34,13 +34,136 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  // WebSocket을 통한 실시간 가격 업데이트 (초기 데이터도 WebSocket에서 받음)
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const isMountedRef = useRef(true)
+
   useEffect(() => {
-    fetchCoinData()
-    
-    // 1초마다 가격 업데이트
-    const interval = setInterval(fetchCoinData, 1000)
-    return () => clearInterval(interval)
-  }, [symbol])
+    // WebSocket 연결 시작 (coin이 없어도 연결하여 initial 메시지에서 데이터 받음)
+    const connectWebSocket = () => {
+      if (!isMountedRef.current) return
+
+      // 이미 연결되어 있으면 재연결하지 않음
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        return
+      }
+
+      // 기존 연결이 있으면 닫기
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+
+      // WebSocket 연결 설정
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+      const host = window.location.host
+      const wsUrl = `${protocol}//${host}/api/ws/coins`
+
+      try {
+        const ws = new WebSocket(wsUrl)
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          console.log("✅ 관리자 코인 상세 페이지 WebSocket 연결 성공")
+          reconnectAttemptsRef.current = 0 // 연결 성공 시 재연결 시도 횟수 초기화
+        }
+
+        ws.onmessage = (event) => {
+          if (!isMountedRef.current || !wsRef.current) return
+
+          try {
+            const message = JSON.parse(event.data)
+            if (message.type === "initial") {
+              // 초기 데이터 수신 (WebSocket에서 모든 코인 데이터를 받음)
+              const initialCoin = message.data.find(
+                (c: any) => c.symbol?.toUpperCase() === symbol.toUpperCase()
+              )
+              if (initialCoin) {
+                // 초기 코인 데이터 설정
+                const coinData: CoinData = {
+                  id: initialCoin.coinId || symbol.toLowerCase(),
+                  name: symbol.toUpperCase(),
+                  symbol: symbol.toUpperCase(),
+                  price: initialCoin.price,
+                  change24h: initialCoin.change24h,
+                  change24hValue: parseFloat((initialCoin.change24h * initialCoin.price / 100).toFixed(2)),
+                }
+                setCoin(coinData)
+                setLoading(false)
+              } else {
+                // 초기 데이터에서 코인을 찾지 못한 경우
+                setLoading(false)
+              }
+            } else if (message.type === "update") {
+              // 가격 업데이트 수신
+              const update = message.data.find(
+                (u: any) => u.symbol?.toUpperCase() === symbol.toUpperCase()
+              )
+              if (update) {
+                setCoin((prev) => {
+                  if (!prev) return prev
+                  return {
+                    ...prev,
+                    price: update.price,
+                    change24h: update.change24h,
+                    change24hValue: parseFloat((update.change24h * update.price / 100).toFixed(2)),
+                  }
+                })
+              }
+            }
+          } catch (error) {
+            console.error("WebSocket 메시지 파싱 오류:", error)
+          }
+        }
+
+        ws.onerror = (error) => {
+          console.error("WebSocket 에러:", error)
+        }
+
+        ws.onclose = () => {
+          if (!isMountedRef.current) return
+
+          console.log("WebSocket 연결 종료")
+          wsRef.current = null
+
+          // 자동 재연결 (최대 5회)
+          if (reconnectAttemptsRef.current < 5 && isMountedRef.current) {
+            reconnectAttemptsRef.current++
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000) // 지수 백오프
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (isMountedRef.current) {
+                console.log(`재연결 시도 ${reconnectAttemptsRef.current}/5...`)
+                connectWebSocket()
+              }
+            }, delay)
+          } else {
+            console.error("WebSocket 재연결 실패: 최대 시도 횟수 초과")
+          }
+        }
+      } catch (error) {
+        console.error("WebSocket 연결 오류:", error)
+      }
+    }
+
+    // WebSocket 연결 시작
+    connectWebSocket()
+
+    // 정리 함수
+    return () => {
+      isMountedRef.current = false
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+    }
+  }, [symbol]) // symbol만 의존성으로 사용 (coin은 WebSocket에서 받음)
 
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
@@ -59,21 +182,7 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
     }
   }, [isDropdownOpen])
 
-  async function fetchCoinData() {
-    try {
-      const response = await fetch(`/api/coins/${symbol}`)
-      if (response.ok) {
-        const result = await response.json()
-        if (result.data && result.data.price > 0) {
-          setCoin(result.data)
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch coin data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // fetchCoinData 함수 제거 - WebSocket의 initial 메시지에서 초기 데이터를 받음
 
   const handleApplyPriceChange = async () => {
     const percent = parseFloat(priceChangePercent)
@@ -89,8 +198,17 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
       return
     }
 
+    if (!coin || coin.price <= 0) {
+      alert("코인 가격 정보를 불러올 수 없습니다.")
+      return
+    }
+
+    // WebSocket에서 받은 현재 가격 사용
+    const currentPrice = coin.price
     // 방향에 따라 양수/음수 변환
     const finalPercent = priceChangeDirection === "up" ? percent : -percent
+    // 새 가격 계산
+    const newPrice = currentPrice * (1 + finalPercent / 100)
 
     setIsApplying(true)
     setCountdown(Math.ceil(delay))
@@ -108,10 +226,11 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
     }, 1000)
 
     try {
-      // 설정한 시간 후 가격 변경 적용
+      // 설정한 시간 후 가격 변경 적용 (클라이언트에서 지연 처리)
       const delayMs = delay * 1000
       setTimeout(async () => {
         try {
+          // 지연 시간이 지난 후 API 호출 (즉시 가격 업데이트)
           const response = await fetch(`/api/admin/coins/${symbol}/price`, {
             method: "POST",
             headers: {
@@ -119,16 +238,18 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
             },
             body: JSON.stringify({
               priceChangePercent: finalPercent,
-              delaySeconds: delay,
+              delaySeconds: 0, // 클라이언트에서 이미 지연 처리했으므로 0으로 설정
+              currentPrice: currentPrice, // WebSocket에서 받은 현재 가격 전달
+              newPrice: newPrice, // 계산된 새 가격 전달
             }),
           })
 
           if (response.ok) {
             const result = await response.json()
             if (result.success) {
-              alert(`가격 변경이 적용되었습니다.\n현재: ₩${result.data.currentPrice.toLocaleString()}\n변경 후: ₩${result.data.newPrice.toLocaleString()}`)
-              // 가격 새로고침
-              await fetchCoinData()
+              // WebSocket에서 받은 현재 가격과 계산된 새 가격 사용
+              alert(`가격 변경이 적용되었습니다.\n현재: ₩${currentPrice.toLocaleString()}\n변경 후: ₩${newPrice.toLocaleString()}`)
+              // 가격은 WebSocket을 통해 자동으로 업데이트됨
               setPriceChangePercent("0")
               setPriceChangeDirection("up")
             }

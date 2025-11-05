@@ -188,18 +188,18 @@ export function TradingPage() {
               u.symbol?.toUpperCase() === prevCoin.symbol.toUpperCase()
           )
           if (update) {
-            return {
-              ...prevCoin,
+                  return {
+                    ...prevCoin,
               price: update.price,
               change1h: update.change1h,
               change1d: update.change24h,
               change1w: update.change1w,
-            }
+                  }
+                }
+                return prevCoin
+              })
+            )
           }
-          return prevCoin
-        })
-      )
-    }
 
     // WebSocket 연결 설정
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"

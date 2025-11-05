@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { isAdmin } from "@/lib/utils/admin"
-import { setPriceAdjustment } from "@/lib/utils/coin-price-adjust"
+import { updateCoinPrice } from "@/lib/mock-coins-service"
 
 /**
  * POST /api/admin/coins/[symbol]/price
@@ -25,7 +25,7 @@ export async function POST(
 
     const { symbol } = await params
     const body = await request.json()
-    const { priceChangePercent, delaySeconds = 3 } = body
+    const { priceChangePercent, delaySeconds = 3, currentPrice, newPrice: providedNewPrice } = body
 
     if (typeof priceChangePercent !== "number") {
       return NextResponse.json(
@@ -42,52 +42,62 @@ export async function POST(
       )
     }
 
-    // 현재 코인 가격 가져오기
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    const priceResponse = await fetch(`${baseUrl}/api/coins/${symbol.toLowerCase()}`, {
-      cache: "no-store",
-    })
+    // 클라이언트에서 전달한 현재 가격과 새 가격 사용 (WebSocket과 일치)
+    let finalCurrentPrice = currentPrice
+    let finalNewPrice = providedNewPrice
 
-    if (!priceResponse.ok) {
+    // 클라이언트에서 전달하지 않았으면 API에서 가져오기 (fallback)
+    if (!finalCurrentPrice || finalCurrentPrice <= 0) {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      const priceResponse = await fetch(`${baseUrl}/api/coins/${symbol.toLowerCase()}`, {
+        cache: "no-store",
+      })
+
+      if (!priceResponse.ok) {
+        return NextResponse.json(
+          { error: "Failed to fetch current coin price" },
+          { status: 500 }
+        )
+      }
+
+      const priceData = await priceResponse.json()
+      finalCurrentPrice = priceData.data?.price || 0
+
+      if (finalCurrentPrice <= 0) {
+        return NextResponse.json(
+          { error: "Invalid current price" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // 새 가격 계산 (클라이언트에서 전달하지 않았으면 계산)
+    if (!finalNewPrice || finalNewPrice <= 0) {
+      finalNewPrice = finalCurrentPrice * (1 + priceChangePercent / 100)
+    }
+
+    // 즉시 가격 업데이트 (클라이언트에서 이미 지연 시간을 처리했으므로)
+    const success = updateCoinPrice(symbol.toLowerCase(), finalNewPrice)
+    if (success) {
+      console.log(
+        `📈 코인 ${symbol} 가격 변경 적용: ${finalCurrentPrice.toLocaleString()} → ${finalNewPrice.toLocaleString()} (${priceChangePercent > 0 ? "+" : ""}${priceChangePercent}%)`
+      )
+    } else {
       return NextResponse.json(
-        { error: "Failed to fetch current coin price" },
+        { error: "Failed to update coin price" },
         { status: 500 }
       )
     }
-
-    const priceData = await priceResponse.json()
-    const currentPrice = priceData.data?.price || 0
-
-    if (currentPrice <= 0) {
-      return NextResponse.json(
-        { error: "Invalid current price" },
-        { status: 400 }
-      )
-    }
-
-    // 새 가격 계산
-    const newPrice = currentPrice * (1 + priceChangePercent / 100)
-
-    // 가격 조절 비율 저장 (설정한 시간 후 적용)
-    setPriceAdjustment(symbol.toLowerCase(), priceChangePercent, delay)
-
-    // 설정한 시간 후 실제 적용 (비동기로 처리)
-    const delayMs = delay * 1000
-    setTimeout(() => {
-      console.log(
-        `📈 코인 ${symbol} 가격 변경 적용: ${currentPrice.toLocaleString()} → ${newPrice.toLocaleString()} (${priceChangePercent > 0 ? "+" : ""}${priceChangePercent}%)`
-      )
-    }, delayMs)
 
     return NextResponse.json({
       success: true,
       data: {
         symbol: symbol.toUpperCase(),
-        currentPrice,
-        newPrice,
+        currentPrice: finalCurrentPrice,
+        newPrice: finalNewPrice,
         priceChangePercent,
         delaySeconds: delay,
-        appliedAt: new Date(Date.now() + delayMs).toISOString(),
+        appliedAt: new Date().toISOString(), // 즉시 적용되므로 현재 시간
       },
     })
   } catch (error) {

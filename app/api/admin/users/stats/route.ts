@@ -69,7 +69,7 @@ export async function GET() {
             const { data: user, error } = await adminSupabase.auth.admin.getUserById(userId)
             if (!error && user?.user) {
               if (user.user.email) {
-                emailMap.set(userId, user.user.email)
+              emailMap.set(userId, user.user.email)
               }
               // display name 조회 (user_metadata에서)
               const displayName = user.user.user_metadata?.display_name || 

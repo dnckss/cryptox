@@ -159,25 +159,25 @@ export const TradingViewChart = memo(function TradingViewChart({
     if (!Array.isArray(data) || data.length === 0) return;
 
     const updateChart = () => {
-      try {
+    try {
         const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
         
-        if (isCandleArray(data)) {
+      if (isCandleArray(data)) {
           let sanitized = data
-            .map((d) => ({
+          .map((d) => ({
               time: Number(d.time) || Math.floor(Date.now() / 1000),
-              open: Number(d.open),
-              high: Number(d.high),
-              low: Number(d.low),
-              close: Number(d.close),
-            }))
-            .filter(
-              (d) =>
-                Number.isFinite(d.time) &&
-                d.time > 0 &&
-                [d.open, d.high, d.low, d.close].every(Number.isFinite)
-            )
-            .sort((a, b) => a.time - b.time);
+            open: Number(d.open),
+            high: Number(d.high),
+            low: Number(d.low),
+            close: Number(d.close),
+          }))
+          .filter(
+            (d) =>
+              Number.isFinite(d.time) &&
+              d.time > 0 &&
+              [d.open, d.high, d.low, d.close].every(Number.isFinite)
+          )
+          .sort((a, b) => a.time - b.time);
 
           // 모바일에서는 최대 300개만 표시
           if (isMobile && sanitized.length > 300) {
@@ -185,19 +185,19 @@ export const TradingViewChart = memo(function TradingViewChart({
           }
 
           seriesRef.current?.setData(sanitized);
-        } else if (isLineArray(data)) {
+      } else if (isLineArray(data)) {
           let sanitized = data
-            .map((d) => ({
+          .map((d) => ({
               time: Number(d.time) || Math.floor(Date.now() / 1000),
-              value: Number(d.value),
-            }))
-            .filter(
-              (d) =>
-                Number.isFinite(d.time) &&
-                d.time > 0 &&
-                Number.isFinite(d.value)
-            )
-            .sort((a, b) => a.time - b.time);
+            value: Number(d.value),
+          }))
+          .filter(
+            (d) =>
+              Number.isFinite(d.time) &&
+              d.time > 0 &&
+              Number.isFinite(d.value)
+          )
+          .sort((a, b) => a.time - b.time);
 
           // 모바일에서는 최대 300개만 표시
           if (isMobile && sanitized.length > 300) {
@@ -205,12 +205,12 @@ export const TradingViewChart = memo(function TradingViewChart({
           }
 
           seriesRef.current?.setData(sanitized);
-        }
+      }
 
         chartRef.current?.timeScale().fitContent();
-      } catch (e) {
-        console.error("❌ series.setData 실패:", e);
-      }
+    } catch (e) {
+      console.error("❌ series.setData 실패:", e);
+    }
     };
 
     // 모바일에서는 300ms 디바운스 적용

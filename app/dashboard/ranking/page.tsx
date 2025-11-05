@@ -6,7 +6,7 @@ export default function Ranking() {
     <AppLayout>
       <div className="p-4 sm:p-6 lg:p-8">
         <RankingPage />
-      </div>
+    </div>
     </AppLayout>
   )
 }

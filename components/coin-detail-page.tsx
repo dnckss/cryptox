@@ -648,14 +648,14 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
       )
       if (initialCoin) {
         setCoin((prev) => ({
-          ...prev,
+              ...prev,
           price: initialCoin.price,
           change1h: initialCoin.change1h,
           change24h: initialCoin.change24h,
           change1w: initialCoin.change1w,
           change24hValue: parseFloat((initialCoin.change24h * initialCoin.price / 100).toFixed(2)),
-        }))
-      }
+            }))
+          }
     }
 
     // WebSocket 연결 설정
@@ -680,12 +680,12 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
       } catch (error) {
         console.error("WebSocket 메시지 파싱 오류:", error)
       }
-    }
-
+      }
+      
     ws.onerror = (error) => {
       console.error("WebSocket 에러:", error)
     }
-
+      
     ws.onclose = () => {
       console.log("WebSocket 연결 종료")
     }

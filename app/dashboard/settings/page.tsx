@@ -6,7 +6,7 @@ export default function Settings() {
     <AppLayout>
       <div className="p-4 sm:p-6 lg:p-8">
         <SettingsPage />
-      </div>
+    </div>
     </AppLayout>
   )
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Coins, Search, TrendingUp, TrendingDown } from "lucide-react"
@@ -18,7 +17,6 @@ interface AdminCoin {
 }
 
 export function AdminCoinsPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [coins, setCoins] = useState<AdminCoin[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -27,62 +25,88 @@ export function AdminCoinsPage() {
     fetchCoins()
   }, [])
 
-  // 가격만 업데이트 (1~5초 랜덤 간격)
+  // WebSocket을 통한 실시간 가격 업데이트
   useEffect(() => {
     if (loading || coins.length === 0) return
 
-    let timeoutId: NodeJS.Timeout | null = null
-    let isMounted = true
-    
-    const updatePrices = async () => {
-      if (!isMounted) return
-      
-      try {
-        // 가격 정보만 빠르게 가져오기
-        const response = await fetch("/api/coins?page=1&perPage=100")
-        if (response.ok && isMounted) {
-          const result = await response.json()
-          const marketData = result.data || []
-
-          if (marketData && marketData.length > 0) {
-            // 가격과 변동률만 업데이트 (테이블 전체 리렌더링 방지)
-            setCoins(prevCoins => 
-              prevCoins.map(prevCoin => {
-                // coinId나 coinSymbol로 매칭
-                const updatedCoin = marketData.find((c: any) => 
-                  c.id === prevCoin.coinId || 
-                  c.symbol?.toUpperCase() === prevCoin.coinSymbol.toUpperCase()
-                )
-                if (updatedCoin) {
-                  return {
-                    ...prevCoin,
-                    currentPrice: updatedCoin.current_price || prevCoin.currentPrice,
-                    change24h: updatedCoin.price_change_percentage_24h_in_currency || prevCoin.change24h,
-                  }
-                }
-                return prevCoin
-              })
-            )
+    // 초기 데이터 수신 핸들러
+    const handleInitial = (initialCoins: any[]) => {
+      // 초기 데이터로 코인 목록 업데이트 (심볼 매칭)
+      setCoins((prevCoins) =>
+        prevCoins.map((prevCoin) => {
+          const initialCoin = initialCoins.find(
+            (c: any) =>
+              c.coinId === prevCoin.coinId ||
+              c.symbol?.toUpperCase() === prevCoin.coinSymbol.toUpperCase()
+          )
+          if (initialCoin) {
+            return {
+              ...prevCoin,
+              currentPrice: initialCoin.price,
+              change24h: initialCoin.change24h,
+            }
           }
-        }
-      } catch (error) {
-        console.error("가격 업데이트 오류:", error)
-      }
-      
-      if (!isMounted) return
-      
-      // 1~5초 랜덤 간격으로 다음 업데이트 스케줄
-      const randomDelay = Math.floor(Math.random() * 4000) + 1000 // 1~5초
-      timeoutId = setTimeout(updatePrices, randomDelay)
+          return prevCoin
+        })
+      )
     }
 
-    // 첫 업데이트 시작
-    const randomDelay = Math.floor(Math.random() * 4000) + 1000
-    timeoutId = setTimeout(updatePrices, randomDelay)
+    // 가격 업데이트 수신 핸들러
+    const handleUpdate = (updates: any[]) => {
+      // 업데이트된 코인만 반영
+      setCoins((prevCoins) =>
+        prevCoins.map((prevCoin) => {
+          const update = updates.find(
+            (u: any) =>
+              u.coinId === prevCoin.coinId ||
+              u.symbol?.toUpperCase() === prevCoin.coinSymbol.toUpperCase()
+          )
+          if (update) {
+            return {
+              ...prevCoin,
+              currentPrice: update.price,
+              change24h: update.change24h,
+            }
+          }
+          return prevCoin
+        })
+      )
+    }
+
+    // WebSocket 연결 설정
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    const host = window.location.host
+    const wsUrl = `${protocol}//${host}/api/ws/coins`
+
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log("✅ 관리자 코인 목록 WebSocket 연결 성공")
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        if (message.type === "initial") {
+          handleInitial(message.data)
+        } else if (message.type === "update") {
+          handleUpdate(message.data)
+        }
+      } catch (error) {
+        console.error("WebSocket 메시지 파싱 오류:", error)
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error("WebSocket 에러:", error)
+    }
+
+    ws.onclose = () => {
+      console.log("WebSocket 연결 종료")
+    }
 
     return () => {
-      isMounted = false
-      if (timeoutId) clearTimeout(timeoutId)
+      ws.close()
     }
   }, [loading, coins.length])
 
@@ -105,16 +129,18 @@ export function AdminCoinsPage() {
     }
   }
 
-  // 검색 필터링
-  const filteredCoins = coins.filter((coin) => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return (
-      coin.coinName.toLowerCase().includes(term) ||
-      coin.coinSymbol.toLowerCase().includes(term) ||
-      coin.coinId.toLowerCase().includes(term)
-    )
-  })
+  // 검색 필터링 및 구매 횟수 내림차순 정렬
+  const filteredCoins = coins
+    .filter((coin) => {
+      if (!searchTerm) return true
+      const term = searchTerm.toLowerCase()
+      return (
+        coin.coinName.toLowerCase().includes(term) ||
+        coin.coinSymbol.toLowerCase().includes(term) ||
+        coin.coinId.toLowerCase().includes(term)
+      )
+    })
+    .sort((a, b) => b.count - a.count) // 구매 횟수 내림차순 정렬
 
   if (loading && coins.length === 0) {
     return (
@@ -135,20 +161,18 @@ export function AdminCoinsPage() {
       </div>
 
       {/* 검색 */}
-      <Card className="bg-transparent border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="코인 이름 또는 심볼로 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-primary/20 text-white placeholder:text-gray-500"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="토큰 및 풀 검색"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-black/40 border-primary/20 text-white placeholder:text-gray-500"
+          />
+        </div>
+      </div>
 
       {/* 코인 목록 */}
       <Card className="bg-transparent border-primary/20">
@@ -182,9 +206,6 @@ export function AdminCoinsPage() {
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">
                       24h 변동
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-400">
-                      관리
                     </th>
                   </tr>
                 </thead>
@@ -244,14 +265,6 @@ export function AdminCoinsPage() {
                               {coin.change24h.toFixed(2)}%
                             </span>
                           </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => router.push(`/dashboard/admin/coins/${coin.coinSymbol.toLowerCase()}`)}
-                            className="text-primary hover:text-primary/80 hover:bg-primary/10 px-3 py-1.5 rounded-md text-sm font-medium transition-colors min-h-[44px] min-w-[44px]"
-                          >
-                            관리
-                          </button>
                         </td>
                       </tr>
                     )

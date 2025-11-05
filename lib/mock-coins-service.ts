@@ -4,7 +4,6 @@
  */
 
 import { COIN_DEFINITIONS, MockCoin, getCoinBySymbol, getCoinById } from "./mock-coins"
-import { getPriceAdjustment, applyPriceAdjustment } from "./utils/coin-price-adjust"
 
 // 가격 히스토리 타입
 interface PriceHistory {
@@ -28,6 +27,9 @@ const priceHistory = new Map<string, PriceHistory[]>()
 
 // 각 코인의 다음 변동 정보 저장
 const nextPriceChanges = new Map<string, NextPriceChange>()
+
+// 각 코인의 자동 변동 중단 플래그 (관리자가 일시 중단한 경우)
+const pausedFluctuations = new Set<string>()
 
 // 히스토리 보관 기간 (7일)
 const HISTORY_RETENTION = 7 * 24 * 60 * 60 * 1000
@@ -102,35 +104,41 @@ export function getCurrentPrice(coin: MockCoin): number {
   const cached = priceCache.get(coin.id)
   const now = Date.now()
   
-  // 다음 변동 정보가 없으면 생성
+  // 자동 변동이 중단된 경우 캐시된 가격 반환 (변동 없음)
+  // 중단된 경우 예약된 변동도 실행하지 않음
+  if (pausedFluctuations.has(coin.id)) {
+    if (cached) {
+      return cached.price
+    }
+    // 캐시가 없으면 기본 가격 사용
+    const defaultPrice = coin.basePrice
+    priceCache.set(coin.id, { price: defaultPrice, lastUpdate: now })
+    return defaultPrice
+  }
+  
+  // 가격 변동 처리
   if (!nextPriceChanges.has(coin.id)) {
     nextPriceChanges.set(coin.id, generateNextPriceChange(coin.id))
   }
   
   const nextChange = nextPriceChanges.get(coin.id)!
   
-  // 예약된 시간이 지났으면 가격 업데이트
-  if (now >= nextChange.scheduledAt) {
+  // 예약된 시간이 지났으면 가격 업데이트 (중단 상태가 아닐 때만)
+  if (now >= nextChange.scheduledAt && !pausedFluctuations.has(coin.id)) {
     const currentPrice = cached?.price || coin.basePrice
     
     // 가격 변동 적용
     const changePercent = nextChange.volatility * nextChange.direction
     let newPrice = currentPrice * (1 + changePercent / 100)
     
-    // 관리자 가격 조절 적용 (3초 후부터 적용)
-    const adjustment = getPriceAdjustment(coin.symbol.toLowerCase())
-    if (adjustment !== null) {
-      newPrice = applyPriceAdjustment(coin.symbol.toLowerCase(), newPrice)
-    }
-    
-    // 최소 가격 제한 (0.001원 이하로 떨어지지 않도록)
+    // 최소 가격 제한
     const minPrice = 0.001
     const finalPrice = Math.max(newPrice, minPrice)
     
-    // 가격 업데이트
+    // 캐시 업데이트
     priceCache.set(coin.id, { price: finalPrice, lastUpdate: now })
     
-    // 가격 히스토리에 추가
+    // 히스토리에 추가
     addPriceToHistory(coin.id, finalPrice, now)
     
     // 다음 변동 예약
@@ -139,20 +147,12 @@ export function getCurrentPrice(coin: MockCoin): number {
     return finalPrice
   }
   
-  // 아직 변동 시간이 안 지났으면 캐시된 가격 반환
-  let basePrice = cached?.price || coin.basePrice
-  
-  // 관리자 가격 조절 적용 (3초 후부터 적용)
-  const adjustment = getPriceAdjustment(coin.symbol.toLowerCase())
-  if (adjustment !== null) {
-    basePrice = applyPriceAdjustment(coin.symbol.toLowerCase(), basePrice)
-  }
-  
+  // 3단계: 캐시된 가격 반환
   if (cached) {
-    return basePrice
+    return cached.price
   }
   
-  // 캐시가 없으면 기본 가격 사용
+  // 4단계: 기본 가격 사용
   const defaultPrice = coin.basePrice
   priceCache.set(coin.id, { price: defaultPrice, lastUpdate: now })
   return defaultPrice
@@ -291,6 +291,104 @@ export function getCoinData(coin: MockCoin) {
  */
 export function getAllCoinsData() {
   return COIN_DEFINITIONS.map(coin => getCoinData(coin))
+}
+
+/**
+ * 코인 가격 직접 업데이트 (관리자용)
+ * @param symbol 코인 심볼 (소문자)
+ * @param newPrice 새로운 가격
+ */
+export function updateCoinPrice(symbol: string, newPrice: number) {
+  const normalizedSymbol = symbol.toLowerCase()
+  const coin = getCoinBySymbol(normalizedSymbol)
+  
+  if (!coin) {
+    console.error(`코인을 찾을 수 없습니다: ${normalizedSymbol}`)
+    return false
+  }
+  
+  const now = Date.now()
+  
+  // 캐시에 새 가격 직접 저장
+  priceCache.set(coin.id, { price: newPrice, lastUpdate: now })
+  
+  // 히스토리에 추가
+  addPriceToHistory(coin.id, newPrice, now)
+  
+  // 자동 변동이 중단된 상태가 아니면 다음 변동 예약
+  if (!pausedFluctuations.has(coin.id)) {
+    const nextChange = generateNextPriceChange(coin.id)
+    nextPriceChanges.set(coin.id, nextChange)
+  }
+  
+  console.log(`✅ 코인 가격 직접 업데이트: ${coin.symbol} → ${newPrice.toFixed(2)}원`)
+  
+  return true
+}
+
+/**
+ * 코인 자동 변동 일시 중단 (관리자용)
+ * @param symbol 코인 심볼 (소문자)
+ */
+export function pausePriceFluctuation(symbol: string) {
+  const normalizedSymbol = symbol.toLowerCase()
+  const coin = getCoinBySymbol(normalizedSymbol)
+  
+  if (!coin) {
+    console.error(`코인을 찾을 수 없습니다: ${normalizedSymbol}`)
+    return false
+  }
+  
+  pausedFluctuations.add(coin.id)
+  
+  // 중단 시 예약된 변동도 제거하여 즉시 변동이 발생하지 않도록 함
+  if (nextPriceChanges.has(coin.id)) {
+    const nextChange = nextPriceChanges.get(coin.id)!
+    // 예약된 변동의 scheduledAt을 미래로 설정하여 실행되지 않도록 함
+    nextChange.scheduledAt = Date.now() + 86400000 // 24시간 후로 설정
+    nextPriceChanges.set(coin.id, nextChange)
+  }
+  
+  console.log(`⏸️ 코인 자동 변동 일시 중단: ${coin.symbol}`)
+  return true
+}
+
+/**
+ * 코인 자동 변동 재개 (관리자용)
+ * @param symbol 코인 심볼 (소문자)
+ */
+export function resumePriceFluctuation(symbol: string) {
+  const normalizedSymbol = symbol.toLowerCase()
+  const coin = getCoinBySymbol(normalizedSymbol)
+  
+  if (!coin) {
+    console.error(`코인을 찾을 수 없습니다: ${normalizedSymbol}`)
+    return false
+  }
+  
+  pausedFluctuations.delete(coin.id)
+  
+  // 다음 변동 예약
+  const nextChange = generateNextPriceChange(coin.id)
+  nextPriceChanges.set(coin.id, nextChange)
+  
+  console.log(`▶️ 코인 자동 변동 재개: ${coin.symbol}`)
+  return true
+}
+
+/**
+ * 코인 자동 변동 중단 상태 확인
+ * @param symbol 코인 심볼 (소문자)
+ */
+export function isPriceFluctuationPaused(symbol: string): boolean {
+  const normalizedSymbol = symbol.toLowerCase()
+  const coin = getCoinBySymbol(normalizedSymbol)
+  
+  if (!coin) {
+    return false
+  }
+  
+  return pausedFluctuations.has(coin.id)
 }
 
 /**
