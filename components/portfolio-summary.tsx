@@ -39,9 +39,9 @@ export function PortfolioSummary() {
             totalCoinValue: result.data.totalCoinValue,
             totalCoinCost: result.data.totalCoinCost,
             coinProfit: result.data.coinProfit,
-            totalInvestment: result.data.initialBalance + (result.data.totalChargedVirtual || 0),
-            calculatedProfit: result.data.totalAssets - (result.data.initialBalance + (result.data.totalChargedVirtual || 0)),
-            profitDifference: (result.data.totalAssets - (result.data.initialBalance + (result.data.totalChargedVirtual || 0))) - result.data.coinProfit,
+            totalInvestment: result.data.initialBalance, // 충전은 이미 initialBalance에 반영됨
+            calculatedProfit: result.data.totalAssets - result.data.initialBalance,
+            profitDifference: (result.data.totalAssets - result.data.initialBalance) - result.data.coinProfit,
           })
         }
       } catch (error) {
@@ -80,12 +80,11 @@ export function PortfolioSummary() {
   // 총 자산 = 잔고 + 보유 코인 현재 가치
   const totalValue = totalAssets
   
-  // 총 투자 원금 = 초기 자본 + 충전한 가상 자산
-  const totalInvestment = initialBalance + totalChargedVirtual
+  // 총 투자 원금 = 초기 자본 (충전은 이미 initialBalance에 반영됨)
+  const totalInvestment = initialBalance
   
-  // 총 수익 = 총 자산 - 총 투자 원금
-  // 이렇게 하면 총 자산이 초기 자본보다 줄었을 때 손해로 정확히 표시됨
-  // 보유 코인 손익과 일치하는지 확인 (보유 코인만 있는 경우 일치)
+  // 총 수익 = 총 자산 - 초기 자본
+  // 충전은 초기 자본금 증가로 처리되므로 수익 계산에서 제외
   const profit = totalValue - totalInvestment
   
   // 수익률 계산 (초기 자본 기준)

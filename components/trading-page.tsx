@@ -259,18 +259,7 @@ export function TradingPage() {
         </div>
 
         {/* 통계 카드 */}
-        <div className="mb-8">
-          <div className="rounded-xl border border-primary/20 bg-black/40 p-6 backdrop-blur-sm w-fit">
-            <p className="text-sm text-gray-400 mb-2">1일 거래량</p>
-            <p className="text-2xl font-bold text-white mb-1">
-              ₩{(totalVolume / 1_000_000_000).toFixed(3)}B
-            </p>
-            <div className="flex items-center gap-1 text-green-400">
-              <ArrowUp className="w-4 h-4" />
-              <span className="text-sm font-medium">{totalVolumeChange}%</span>
-            </div>
-          </div>
-        </div>
+       
 
         {/* 검색 및 필터 */}
         <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">

@@ -1,9 +1,19 @@
+import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { PortfolioSummary } from "@/components/portfolio-summary"
 import { HoldingsList } from "@/components/holdings-list"
 import { WelcomePopup } from "@/components/welcome-popup"
+import { isAdmin } from "@/lib/utils/admin"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // 관리자 여부 확인
+  const admin = await isAdmin()
+  
+  // 관리자면 충전 관리 페이지로 리다이렉트
+  if (admin) {
+    redirect("/dashboard/admin/charges")
+  }
+
   return (
     <div className="min-h-screen bg-black flex">
       <Sidebar />

@@ -64,7 +64,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
   const [chartLoading, setChartLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy")
   const [chartTimeframe, setChartTimeframe] = useState<"1H" | "1D" | "1W" | "1M" | "1Y">("1D")
-  const [chartType, setChartType] = useState<"line" | "candle">("line")
+  const [chartType, setChartType] = useState<"line" | "candlestick">("line")
   const [chartData, setChartData] = useState<number[]>([])
   const [candleData, setCandleData] = useState<CandleData[]>([])
   const [chartWidth, setChartWidth] = useState(800)
@@ -177,12 +177,31 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
         }
         const result = await response.json()
         if (result.data && result.data.length > 0) {
-          setChartData(result.data)
+          // API 응답: 숫자 또는 문자열 배열 [price1, price2, ...] 또는 ["1234.5", "1236.2", ...]
+          // lightweight-charts 요구사항: { time: number(초), value: number }[] (오름차순 정렬)
+          
+          // ✅ 문자열 배열을 숫자로 변환하고 NaN 필터링
+          const raw = result.data as any[]
+          const prices = raw
+            .map((v) => Number(v))
+            .filter((v) => Number.isFinite(v) && v > 0)
+          
+          if (!prices.length) {
+            console.warn("⚠️ 유효한 숫자 가격 데이터가 없음");
+            setChartData([coin.price])
+            setCandleData([])
+            return
+          }
+          
+          const now = Math.floor(Date.now() / 1000) // 현재 시각 (초 단위)
+          
+          setChartData(prices) // 원본 가격 배열 유지 (캔들 생성용)
           
           // 캔들 데이터 생성 (라인 차트 데이터 기반)
-          const candles = generateCandleData(result.data, chartTimeframe)
+          const candles = generateCandleData(prices, chartTimeframe, now)
           setCandleData(candles)
         } else {
+          console.warn("⚠️ 차트 데이터가 비어있음, 현재 가격으로 대체");
           // 차트 데이터가 없으면 현재 가격으로 고정된 배열 생성
           setChartData([coin.price])
           setCandleData([])
@@ -200,10 +219,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     if (!loading && coin.price > 0) {
       fetchChartData()
     }
-  }, [symbol, chartTimeframe, coin.price, loading])
+  }, [symbol, chartTimeframe, loading]) // coin.price 제거 - 가격 변경 시 전체 리로드하지 않음
   
-  // 캔들 데이터 생성 함수 (react-financial-charts 형식)
-  function generateCandleData(prices: number[], timeframe: string): CandleData[] {
+  // 캔들 데이터 생성 함수
+  // lightweight-charts 요구사항: { time: number(초), open, high, low, close }[] (오름차순 정렬)
+  function generateCandleData(prices: number[], timeframe: string, baseTime: number): CandleData[] {
     if (prices.length < 4) return []
     
     const candles: CandleData[] = []
@@ -228,40 +248,150 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
         break
     }
     
+    // 캔들 데이터 생성 (과거부터 현재까지)
     for (let i = 0; i < prices.length; i += candleSize) {
       const chunk = prices.slice(i, Math.min(i + candleSize, prices.length))
       if (chunk.length === 0) continue
       
-      const open = chunk[0]
-      const close = chunk[chunk.length - 1]
-      const high = Math.max(...chunk)
-      const low = Math.min(...chunk)
-      const timestamp = Date.now() - ((prices.length - i) * 60000) // 임의의 타임스탬프
+      // ✅ 문자열을 숫자로 변환하고 NaN 필터링
+      const chunkNums = chunk
+        .map((x) => Number(x))
+        .filter((x) => Number.isFinite(x) && x > 0)
       
-      candles.push({ timestamp, open, high, low, close })
+      if (!chunkNums.length) continue
+      
+      const open = Number(chunkNums[0])
+      const close = Number(chunkNums[chunkNums.length - 1])
+      const high = Number(Math.max(...chunkNums))
+      const low = Number(Math.min(...chunkNums))
+      
+      // time은 초 단위 Unix timestamp (오름차순)
+      // 과거부터 현재까지: baseTime - (전체 데이터 수 - 현재 인덱스) * 60초
+      const secondsAgo = (prices.length - 1 - i) * 60 // 1분 간격
+      const time = baseTime - secondsAgo
+      
+      // timestamp는 밀리초로 저장 (나중에 변환용)
+      candles.push({ timestamp: time * 1000, open, high, low, close })
     }
+    
+    // 오름차순 정렬 (time 기준)
+    candles.sort((a, b) => a.timestamp - b.timestamp)
     
     return candles
   }
   
   // TradingView lightweight-charts용 데이터 변환
+  // 공식 문서: https://tradingview.github.io/lightweight-charts/docs/series-types#candlestick
+  // 요구사항: { time: number(초), open, high, low, close }[] (오름차순 정렬)
   const tradingViewCandleData: CandleDataPoint[] = useMemo(() => {
-    return candleData.map(candle => ({
-      time: Math.floor(candle.timestamp / 1000) as any, // Unix timestamp (seconds)
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-    }))
+    if (!candleData || candleData.length === 0) {
+      console.log("🕯️ 캔들 데이터 없음");
+      return []
+    }
+    
+    // timestamp(밀리초)를 time(초)로 변환
+    // ✅ 모든 값을 Number()로 변환하고 NaN 필터링
+    const mappedData = candleData
+      .map(candle => {
+        const time = Math.floor(candle.timestamp / 1000) // Unix timestamp (seconds) - number 타입
+        const open = Number(candle.open)
+        const high = Number(candle.high)
+        const low = Number(candle.low)
+        const close = Number(candle.close)
+        
+        // NaN 체크
+        if (!Number.isFinite(time) || !Number.isFinite(open) || !Number.isFinite(high) || 
+            !Number.isFinite(low) || !Number.isFinite(close)) {
+          return null
+        }
+        
+        return { time, open, high, low, close }
+      })
+      .filter((d): d is CandleDataPoint => d !== null)
+    
+    // 오름차순 정렬 (time 기준)
+    mappedData.sort((a, b) => a.time - b.time)
+    
+    // 중복 time 제거 (같은 time이 있으면 첫 번째 것만 유지)
+    const uniqueData = mappedData.reduce((acc, curr) => {
+      const last = acc[acc.length - 1]
+      if (!last || last.time !== curr.time) {
+        acc.push(curr)
+      }
+      return acc
+    }, [] as CandleDataPoint[])
+    
+    // 데이터 유효성 검증
+    const validData = uniqueData.filter((d: CandleDataPoint) => 
+      d.time > 0 && 
+      d.open > 0 && 
+      d.high > 0 && 
+      d.low > 0 && 
+      d.close > 0 &&
+      d.high >= d.low &&
+      d.high >= d.open &&
+      d.high >= d.close &&
+      d.low <= d.open &&
+      d.low <= d.close
+    );
+    
+    console.log("🕯️ 캔들 데이터 변환:", {
+      원본: candleData.length,
+      변환: mappedData.length,
+      유효: validData.length,
+      샘플: validData.slice(0, 3),
+      최소time: validData[0]?.time,
+      최대time: validData[validData.length - 1]?.time
+    });
+    
+    return validData;
   }, [candleData])
   
+  // lightweight-charts 요구사항: { time: number(초), value: number }[] (오름차순 정렬)
+  // 마지막 포인트를 현재 가격으로 업데이트하여 부드러운 전환
   const tradingViewLineData: LineDataPoint[] = useMemo(() => {
-    const now = Date.now()
-    return chartData.map((price, index) => ({
-      time: Math.floor((now - (chartData.length - index) * 60000) / 1000) as any, // Unix timestamp (seconds)
-      value: price,
-    }))
-  }, [chartData])
+    if (!chartData || chartData.length === 0) {
+      return []
+    }
+    
+    // 현재 시각 (초 단위 Unix timestamp)
+    const now = Math.floor(Date.now() / 1000)
+    
+    // ✅ 각 가격을 숫자로 변환하고 NaN 필터링
+    const dataPoints = chartData
+      .map((price, index) => {
+        const v = Number(price)
+        if (!Number.isFinite(v) || v <= 0) return null
+        
+        // 데이터 포인트 수만큼 과거로 거슬러 올라가며 타임스탬프 생성
+        const secondsAgo = (chartData.length - 1 - index) * 60 // 1분 간격
+        const time = now - secondsAgo
+        return { time, value: v }
+      })
+      .filter((d): d is LineDataPoint => d !== null)
+    
+    // 오름차순 정렬 (time 기준)
+    dataPoints.sort((a, b) => a.time - b.time)
+    
+    // 중복 time 제거 (같은 time이 있으면 첫 번째 것만 유지)
+    const uniqueDataPoints = dataPoints.reduce((acc, curr) => {
+      const last = acc[acc.length - 1]
+      if (!last || last.time !== curr.time) {
+        acc.push(curr)
+      }
+      return acc
+    }, [] as LineDataPoint[])
+    
+    // 마지막 포인트를 현재 가격으로 업데이트 (부드러운 전환을 위해)
+    if (uniqueDataPoints.length > 0 && coin.price > 0) {
+      const lastPoint = uniqueDataPoints[uniqueDataPoints.length - 1]
+      // 마지막 포인트의 시간은 현재 시간으로 유지
+      lastPoint.time = now
+      lastPoint.value = coin.price
+    }
+    
+    return uniqueDataPoints
+  }, [chartData, coin.price]) // coin.price 추가하여 가격 변경 시 마지막 포인트만 업데이트
   
   // 차트 너비 반응형 조정
   useEffect(() => {
@@ -282,31 +412,32 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     return () => window.removeEventListener('resize', updateChartWidth)
   }, [])
 
+  // 보유량 조회 함수
+  const fetchHolding = async () => {
+    try {
+      setLoadingHolding(true)
+      const response = await fetch(`/api/user/holdings?coinId=${coin.id}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data.amount > 0) {
+          setHolding({
+            amount: result.data.amount,
+            averageBuyPrice: result.data.averageBuyPrice,
+          })
+        } else {
+          setHolding(null)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch holding:", error)
+      setHolding(null)
+    } finally {
+      setLoadingHolding(false)
+    }
+  }
+
   // 보유량 조회
   useEffect(() => {
-    async function fetchHolding() {
-      try {
-        setLoadingHolding(true)
-        const response = await fetch(`/api/user/holdings?coinId=${coin.id}`)
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data.amount > 0) {
-            setHolding({
-              amount: result.data.amount,
-              averageBuyPrice: result.data.averageBuyPrice,
-            })
-          } else {
-            setHolding(null)
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch holding:", error)
-        setHolding(null)
-      } finally {
-        setLoadingHolding(false)
-      }
-    }
-
     if (!loading && coin.id) {
       fetchHolding()
     }
@@ -529,32 +660,33 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
   }, [symbol, loading])
 
-  // 거래 내역 로드
-  useEffect(() => {
+  // 거래 내역 조회 함수
+  const fetchTransactions = async () => {
     if (loading) return
-
-    async function fetchTransactions() {
-      try {
-        setTransactionsLoading(true)
-        const response = await fetch(`/api/coins/${symbol}/transactions?limit=20`)
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            setTransactions(result.data)
-          } else {
-            setTransactions([])
-          }
+    
+    try {
+      setTransactionsLoading(true)
+      const response = await fetch(`/api/coins/${symbol}/transactions?limit=20`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setTransactions(result.data)
         } else {
           setTransactions([])
         }
-      } catch (error) {
-        console.error("Failed to load transactions:", error)
+      } else {
         setTransactions([])
-      } finally {
-        setTransactionsLoading(false)
       }
+    } catch (error) {
+      console.error("Failed to load transactions:", error)
+      setTransactions([])
+    } finally {
+      setTransactionsLoading(false)
     }
+  }
 
+  // 거래 내역 로드
+  useEffect(() => {
     fetchTransactions()
   }, [symbol, loading])
 
@@ -674,10 +806,10 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     라인
                   </button>
                   <button
-                    onClick={() => setChartType("candle")}
+                    onClick={() => setChartType("candlestick")}
                     className={cn(
                       "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                      chartType === "candle"
+                      chartType === "candlestick"
                         ? "bg-primary text-primary-foreground"
                         : "bg-transparent text-gray-400 hover:text-white hover:bg-primary/10"
                     )}
@@ -701,7 +833,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                         height={320}
                       />
                     </div>
-                  ) : chartType === "candle" && tradingViewCandleData.length > 0 ? (
+                  ) : chartType === "candlestick" && tradingViewCandleData.length > 0 ? (
                     <div className="w-full h-full transition-all duration-500 ease-in-out" style={{ opacity: 1 }}>
                       <TradingViewChart
                         data={tradingViewCandleData}
@@ -757,11 +889,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     <p className="text-sm text-gray-400 mb-1">TVL</p>
                     <p className="text-xl font-semibold text-white">
                       {fixedStats && fixedStats.tvl >= 1_000_000_000_000
-                        ? `₩{(fixedStats.tvl / 1_000_000_000_000).toFixed(2)}T`
+                        ? `₩${(fixedStats.tvl / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.tvl >= 1_000_000_000
-                        ? `₩{(fixedStats.tvl / 1_000_000_000).toFixed(2)}B`
+                        ? `₩${(fixedStats.tvl / 1_000_000_000).toFixed(2)}B`
                         : fixedStats && fixedStats.tvl >= 1_000_000
-                        ? `₩{(fixedStats.tvl / 1_000_000).toFixed(2)}M`
+                        ? `₩${(fixedStats.tvl / 1_000_000).toFixed(2)}M`
                         : fixedStats
                         ? `₩${fixedStats.tvl.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : "-"}
@@ -771,11 +903,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     <p className="text-sm text-gray-400 mb-1">시가총액</p>
                     <p className="text-xl font-semibold text-white">
                       {fixedStats && fixedStats.marketCap >= 1_000_000_000_000
-                        ? `₩{(fixedStats.marketCap / 1_000_000_000_000).toFixed(2)}T`
+                        ? `₩${(fixedStats.marketCap / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.marketCap >= 1_000_000_000
-                        ? `₩{(fixedStats.marketCap / 1_000_000_000).toFixed(2)}B`
+                        ? `₩${(fixedStats.marketCap / 1_000_000_000).toFixed(2)}B`
                         : fixedStats && fixedStats.marketCap >= 1_000_000
-                        ? `₩{(fixedStats.marketCap / 1_000_000).toFixed(2)}M`
+                        ? `₩${(fixedStats.marketCap / 1_000_000).toFixed(2)}M`
                         : fixedStats
                         ? `₩${fixedStats.marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : "-"}
@@ -785,11 +917,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     <p className="text-sm text-gray-400 mb-1">FDV</p>
                     <p className="text-xl font-semibold text-white">
                       {fixedStats && fixedStats.fdv >= 1_000_000_000_000
-                        ? `₩{(fixedStats.fdv / 1_000_000_000_000).toFixed(2)}T`
+                        ? `₩${(fixedStats.fdv / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.fdv >= 1_000_000_000
-                        ? `₩{(fixedStats.fdv / 1_000_000_000).toFixed(2)}B`
+                        ? `₩${(fixedStats.fdv / 1_000_000_000).toFixed(2)}B`
                         : fixedStats && fixedStats.fdv >= 1_000_000
-                        ? `₩{(fixedStats.fdv / 1_000_000).toFixed(2)}M`
+                        ? `₩${(fixedStats.fdv / 1_000_000).toFixed(2)}M`
                         : fixedStats
                         ? `₩${fixedStats.fdv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : "-"}
@@ -799,11 +931,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     <p className="text-sm text-gray-400 mb-1">1일 거래량</p>
                     <p className="text-xl font-semibold text-white">
                       {fixedStats && fixedStats.volume24h >= 1_000_000_000_000
-                        ? `₩{(fixedStats.volume24h / 1_000_000_000_000).toFixed(2)}T`
+                        ? `₩${(fixedStats.volume24h / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.volume24h >= 1_000_000_000
-                        ? `₩{(fixedStats.volume24h / 1_000_000_000).toFixed(2)}B`
+                        ? `₩${(fixedStats.volume24h / 1_000_000_000).toFixed(2)}B`
                         : fixedStats && fixedStats.volume24h >= 1_000_000
-                        ? `₩{(fixedStats.volume24h / 1_000_000).toFixed(2)}M`
+                        ? `₩${(fixedStats.volume24h / 1_000_000).toFixed(2)}M`
                         : fixedStats
                         ? `₩${fixedStats.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : "-"}

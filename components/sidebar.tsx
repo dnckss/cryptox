@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -12,21 +13,58 @@ import {
   History,
   Settings,
   LogOut,
+  Trophy,
+  Shield,
+  Users,
 } from "lucide-react"
-
-  const menuItems = [
-    { href: "/dashboard", label: "대시보드", icon: Home },
-    { href: "/dashboard/trading", label: "거래", icon: TrendingUp },
-    { href: "/dashboard/wallet", label: "내 지갑", icon: Wallet },
-    { href: "/dashboard/history", label: "거래 내역", icon: History },
-    { href: "/dashboard/profit", label: "수익 내역", icon: TrendingUp },
-    { href: "/dashboard/settings", label: "설정", icon: Settings },
-  ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // 관리자 여부 확인
+  useEffect(() => {
+    async function checkAdminStatus() {
+      try {
+        const response = await fetch("/api/user/admin-status")
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success) {
+            setIsAdmin(result.data.isAdmin || false)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check admin status:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAdminStatus()
+  }, [])
+
+  // 일반 사용자 메뉴
+  const userMenuItems = [
+    { href: "/dashboard", label: "대시보드", icon: Home },
+    { href: "/dashboard/trading", label: "거래", icon: TrendingUp },
+    { href: "/dashboard/wallet", label: "내 지갑", icon: Wallet },
+    { href: "/dashboard/history", label: "거래 내역", icon: History },
+    { href: "/dashboard/profit", label: "수익 내역", icon: TrendingUp },
+    { href: "/dashboard/ranking", label: "랭킹", icon: Trophy },
+    { href: "/dashboard/settings", label: "설정", icon: Settings },
+  ]
+
+  // 관리자 메뉴
+  const adminMenuItems = [
+    { href: "/dashboard/admin/charges", label: "충전 관리", icon: Shield },
+    { href: "/dashboard/admin/users", label: "사용자 통계", icon: Users },
+  ]
+
+  // 현재 사용자에 맞는 메뉴 선택
+  const menuItems = isAdmin ? adminMenuItems : userMenuItems
 
   const handleLogout = async () => {
     try {

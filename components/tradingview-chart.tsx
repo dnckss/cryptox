@@ -1,16 +1,27 @@
 "use client";
 
 import React, { useEffect, useRef, memo } from "react";
+import {
+  createChart,
+  IChartApi,
+  ISeriesApi,
+  CandlestickSeries,
+  LineSeries,
+  ColorType,
+  CrosshairMode,
+  LineStyle,
+} from "lightweight-charts";
 
 export interface CandleDataPoint {
-  time: number; // Unix seconds 권장
+  time: number; // Unix seconds
   open: number;
   high: number;
   low: number;
   close: number;
 }
+
 export interface LineDataPoint {
-  time: number; // Unix seconds 권장
+  time: number; // Unix seconds
   value: number;
 }
 
@@ -21,6 +32,22 @@ interface TradingViewChartProps {
   height?: number;
 }
 
+// 타입 가드
+function isCandleArray(arr: any[]): arr is CandleDataPoint[] {
+  return (
+    Array.isArray(arr) &&
+    arr.length > 0 &&
+    "open" in arr[0] &&
+    "high" in arr[0] &&
+    "low" in arr[0] &&
+    "close" in arr[0]
+  );
+}
+
+function isLineArray(arr: any[]): arr is LineDataPoint[] {
+  return Array.isArray(arr) && arr.length > 0 && "value" in arr[0];
+}
+
 export const TradingViewChart = memo(function TradingViewChart({
   data,
   type,
@@ -28,104 +55,145 @@ export const TradingViewChart = memo(function TradingViewChart({
   height = 400,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
-  const seriesRef = useRef<any>(null);
-  const roRef = useRef<ResizeObserver | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<any> | null>(null);
 
+  // 차트/시리즈 생성·해제
   useEffect(() => {
-    let mounted = true;
+    const el = containerRef.current;
+    if (!el) return;
 
-    (async () => {
-      const el = containerRef.current;
-      if (!el) {
-        return;
-      }
-
-      // ✅ 클라이언트 전용 동적 임포트 (SSR 경계 이슈 회피)
-      const {
-        createChart,
-        CrosshairMode,
-        LineStyle,
-        CandlestickSeries,
-        LineSeries,
-      } = await import("lightweight-charts");
-
-      const chart = createChart(el, {
-        width,
-        height,
-        layout: {
-          background: { color: "transparent" },
-          textColor: "rgba(255,255,255,0.5)",
-        },
-        grid: {
-          vertLines: { color: "rgba(255,255,255,0.05)" },
-          horzLines: { color: "rgba(255,255,255,0.05)" },
-        },
-        crosshair: {
-          mode: CrosshairMode.Normal,
-          vertLine: { color: "rgba(139,92,246,0.5)", width: 1, style: LineStyle.Solid },
-          horzLine: { color: "rgba(139,92,246,0.5)", width: 1, style: LineStyle.Solid },
-        },
-        rightPriceScale: { borderColor: "rgba(255,255,255,0.2)" },
-        timeScale: { borderColor: "rgba(255,255,255,0.2)", timeVisible: true, secondsVisible: false },
-      });
-
-      chartRef.current = chart;
-
-      if (!mounted) return;
-
-      // ✅ v5 API: chart.addSeries(SeriesType, options)
-      if (type === "candlestick") {
-        const s = chart.addSeries(CandlestickSeries, {
-          upColor: "#22c55e",
-          downColor: "#ef4444",
-          borderUpColor: "#22c55e",
-          borderDownColor: "#ef4444",
-          wickUpColor: "#22c55e",
-          wickDownColor: "#ef4444",
-        });
-        seriesRef.current = s;
-        if (Array.isArray(data) && data.length) {
-          s.setData(data as any);
-        }
-      } else {
-        const s = chart.addSeries(LineSeries, {
-          color: "rgb(139, 92, 246)",
-          lineWidth: 2,
-        });
-        seriesRef.current = s;
-        if (Array.isArray(data) && data.length) {
-          s.setData(data as any);
-        }
-      }
-
-      chart.timeScale().fitContent();
-
-      // 반응형: ResizeObserver
-      const ro = new ResizeObserver(() => {
-        if (!containerRef.current || !chartRef.current) return;
-        const w = containerRef.current.clientWidth;
-        if (w > 0) chartRef.current.applyOptions({ width: width ?? w });
-      });
-      ro.observe(el);
-      roRef.current = ro;
-    })();
-
-    return () => {
-      mounted = false;
-      roRef.current?.disconnect();
-      roRef.current = null;
-      chartRef.current?.remove?.();
+    // 기존 차트 제거
+    if (chartRef.current) {
+      chartRef.current.remove();
       chartRef.current = null;
+      seriesRef.current = null;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const cw = Math.max(rect.width || el.clientWidth || width, 1);
+    const ch = Math.max(rect.height || el.clientHeight || height, 1);
+
+    // 차트 생성
+    const chart = createChart(el, {
+      width: cw,
+      height: ch,
+      layout: {
+        textColor: "rgba(255,255,255,0.85)",
+        background: { type: ColorType.Solid, color: "black" },
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,0.08)" },
+        horzLines: { color: "rgba(255,255,255,0.08)" },
+      },
+      rightPriceScale: { borderColor: "rgba(255,255,255,0.24)" },
+      timeScale: {
+        borderColor: "rgba(255,255,255,0.24)",
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          color: "rgba(139,92,246,0.9)",
+          width: 1,
+          style: LineStyle.Solid,
+        },
+        horzLine: {
+          color: "rgba(139,92,246,0.9)",
+          width: 1,
+          style: LineStyle.Solid,
+        },
+      },
+    });
+
+    chartRef.current = chart;
+
+    // 시리즈 추가
+    if (type === "candlestick") {
+      seriesRef.current = chart.addSeries(CandlestickSeries, {
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderVisible: false,
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+      });
+    } else {
+      seriesRef.current = chart.addSeries(LineSeries, {
+        lineWidth: 2,
+        color: "rgb(139, 92, 246)",
+      });
+    }
+
+    // 반응형 처리
+    const handleResize = () => {
+      if (!containerRef.current || !chartRef.current) return;
+      const newWidth = containerRef.current.clientWidth;
+      if (newWidth > 0) {
+        chartRef.current.applyOptions({ width: newWidth });
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(el);
+
+    // 클린업
+    return () => {
+      resizeObserver.disconnect();
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
       seriesRef.current = null;
     };
   }, [type, width, height]);
 
+  // 데이터 반영 (현재 시간 적용)
   useEffect(() => {
-    if (!seriesRef.current || !data?.length) return;
-    seriesRef.current.setData(data as any);
-    chartRef.current?.timeScale?.().fitContent?.();
-  }, [data, type]);
+    if (!seriesRef.current || !chartRef.current) return;
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    try {
+      if (isCandleArray(data)) {
+        const sanitized = data
+          .map((d) => ({
+            time: Number(d.time) || Math.floor(Date.now() / 1000), // 시간이 없으면 현재 시간
+            open: Number(d.open),
+            high: Number(d.high),
+            low: Number(d.low),
+            close: Number(d.close),
+          }))
+          .filter(
+            (d) =>
+              Number.isFinite(d.time) &&
+              d.time > 0 &&
+              [d.open, d.high, d.low, d.close].every(Number.isFinite)
+          )
+          .sort((a, b) => a.time - b.time);
+
+        seriesRef.current.setData(sanitized);
+      } else if (isLineArray(data)) {
+        const sanitized = data
+          .map((d) => ({
+            time: Number(d.time) || Math.floor(Date.now() / 1000), // 시간이 없으면 현재 시간
+            value: Number(d.value),
+          }))
+          .filter(
+            (d) =>
+              Number.isFinite(d.time) &&
+              d.time > 0 &&
+              Number.isFinite(d.value)
+          )
+          .sort((a, b) => a.time - b.time);
+
+        seriesRef.current.setData(sanitized);
+      }
+
+      chartRef.current.timeScale().fitContent();
+    } catch (e) {
+      console.error("❌ series.setData 실패:", e);
+    }
+  }, [data]);
 
   return (
     <div
@@ -133,9 +201,29 @@ export const TradingViewChart = memo(function TradingViewChart({
       style={{
         position: "relative",
         width: "100%",
-        height: `${height}px`, // 명시적 픽셀 높이
+        height: `${height}px`,
         minHeight: `${height}px`,
       }}
     />
   );
 });
+
+// 현재 시간 기반 데이터 생성 헬퍼 함수
+export function getCurrentTimestamp(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+// 사용 예시
+export function generateSampleData(): CandleDataPoint[] {
+  const now = getCurrentTimestamp();
+  return Array.from({ length: 100 }, (_, i) => {
+    const basePrice = 100;
+    return {
+      time: now - (99 - i) * 60, // 1분 간격
+      open: basePrice + Math.random() * 10,
+      high: basePrice + Math.random() * 15,
+      low: basePrice - Math.random() * 5,
+      close: basePrice + Math.random() * 10,
+    };
+  });
+}
