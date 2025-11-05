@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,16 +14,36 @@ import {
   LogOut,
 } from "lucide-react"
 
-const menuItems = [
-  { href: "/dashboard", label: "대시보드", icon: Home },
-  { href: "/dashboard/trading", label: "거래", icon: TrendingUp },
-  { href: "/dashboard/wallet", label: "내 지갑", icon: Wallet },
-  { href: "/dashboard/history", label: "거래 내역", icon: History },
-  { href: "/dashboard/settings", label: "설정", icon: Settings },
-]
+  const menuItems = [
+    { href: "/dashboard", label: "대시보드", icon: Home },
+    { href: "/dashboard/trading", label: "거래", icon: TrendingUp },
+    { href: "/dashboard/wallet", label: "내 지갑", icon: Wallet },
+    { href: "/dashboard/history", label: "거래 내역", icon: History },
+    { href: "/dashboard/profit", label: "수익 내역", icon: TrendingUp },
+    { href: "/dashboard/settings", label: "설정", icon: Settings },
+  ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error("로그아웃 오류:", error)
+        alert("로그아웃에 실패했습니다. 다시 시도해주세요.")
+      } else {
+        // 로그아웃 성공 시 홈 페이지로 리다이렉트
+        router.push("/")
+        router.refresh()
+      }
+    } catch (err) {
+      console.error("로그아웃 오류:", err)
+      alert("로그아웃에 실패했습니다. 다시 시도해주세요.")
+    }
+  }
 
   return (
     <aside className="w-64 border-r border-primary/20 bg-black/50 h-screen sticky top-0 flex flex-col">
@@ -59,6 +80,7 @@ export function Sidebar() {
       <div className="p-4 border-t border-primary/20">
         <Button
           variant="ghost"
+          onClick={handleLogout}
           className="w-full justify-start gap-3 text-white hover:bg-primary/10"
         >
           <LogOut className="w-5 h-5" />

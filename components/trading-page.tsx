@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -20,7 +20,7 @@ interface Coin {
   volume24h: number
 }
 
-// 100개 코인 모의 데이터 생성
+// 폴백용 모의 데이터 생성 (API 실패 시 사용)
 function generateMockCoins(): Coin[] {
   const coins: Coin[] = []
   const symbols = [
@@ -84,16 +84,126 @@ function generateMockCoins(): Coin[] {
   return coins
 }
 
-// 초기 100개 코인 데이터 생성
-const initialCoins = generateMockCoins()
-
 export function TradingPage() {
   const router = useRouter()
-  const [coins] = useState<Coin[]>(initialCoins)
+  const [coins, setCoins] = useState<Coin[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [timeframe, setTimeframe] = useState<"1h" | "1d" | "1w">("1d")
   const [sortBy, setSortBy] = useState<"volume" | "price" | "change">("volume")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    async function fetchInitialCoins() {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/coins?page=1&perPage=100")
+        if (!response.ok) {
+          throw new Error("Failed to fetch coins")
+        }
+        const result = await response.json()
+        const marketData = result.data || []
+
+        // API 응답이 비어있으면 에러
+        if (!marketData || marketData.length === 0) {
+          throw new Error("No market data received from API")
+        }
+
+        // CoinGecko 데이터를 우리 형식으로 변환
+        const formattedCoins: Coin[] = marketData.map((coin: any) => ({
+          id: coin.id,
+          name: coin.name,
+          symbol: coin.symbol.toUpperCase(),
+          icon: coin.symbol.toUpperCase()[0] || "?",
+          price: coin.current_price || 0,
+          change1h: coin.price_change_percentage_1h_in_currency || 0,
+          change1d: coin.price_change_percentage_24h_in_currency || 0,
+          change1w: coin.price_change_percentage_7d_in_currency || 0,
+          fdv: coin.fully_diluted_valuation || 0,
+          volume24h: coin.total_volume || 0,
+        }))
+
+        // 실제 데이터가 있는지 확인 (가격이 0이면 폴백 사용)
+        const hasValidData = formattedCoins.some(coin => coin.price > 0)
+        if (!hasValidData) {
+          console.error("Invalid data: all prices are 0")
+          throw new Error("Invalid data received from API")
+        }
+
+        // 모의 데이터 검증
+        if (formattedCoins.length === 0) {
+          throw new Error("No coins data received")
+        }
+
+        setCoins(formattedCoins)
+      } catch (error) {
+        console.error("❌ 코인 데이터 로드 오류:", error)
+        // 에러 시 빈 배열로 설정
+        setCoins([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInitialCoins()
+  }, [])
+
+  // 가격만 업데이트 (1~5초 랜덤 간격)
+  useEffect(() => {
+    if (loading || coins.length === 0) return
+
+    let timeoutId: NodeJS.Timeout | null = null
+    let isMounted = true
+    
+    const updatePrices = async () => {
+      if (!isMounted) return
+      
+      try {
+        const response = await fetch("/api/coins?page=1&perPage=100")
+        if (response.ok && isMounted) {
+          const result = await response.json()
+          const marketData = result.data || []
+
+          if (marketData && marketData.length > 0) {
+            // 가격과 변동률만 업데이트 (테이블 전체 리렌더링 방지)
+            setCoins(prevCoins => 
+              prevCoins.map(prevCoin => {
+                const updatedCoin = marketData.find((c: any) => c.id === prevCoin.id)
+                if (updatedCoin) {
+                  return {
+                    ...prevCoin,
+                    price: updatedCoin.current_price || prevCoin.price,
+                    change1h: updatedCoin.price_change_percentage_1h_in_currency || prevCoin.change1h,
+                    change1d: updatedCoin.price_change_percentage_24h_in_currency || prevCoin.change1d,
+                    change1w: updatedCoin.price_change_percentage_7d_in_currency || prevCoin.change1w,
+                  }
+                }
+                return prevCoin
+              })
+            )
+          }
+        }
+      } catch (error) {
+        console.error("가격 업데이트 오류:", error)
+      }
+      
+      if (!isMounted) return
+      
+      // 1~5초 랜덤 간격으로 다음 업데이트 스케줄
+      const randomDelay = Math.floor(Math.random() * 4000) + 1000 // 1~5초
+      timeoutId = setTimeout(updatePrices, randomDelay)
+    }
+
+    // 첫 업데이트 시작
+    const randomDelay = Math.floor(Math.random() * 4000) + 1000
+    timeoutId = setTimeout(updatePrices, randomDelay)
+
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [loading, coins.length])
 
   const filteredCoins = coins.filter(
     (coin) =>
@@ -123,9 +233,21 @@ export function TradingPage() {
 
   // 통계 계산
   const totalVolume = coins.reduce((sum, coin) => sum + coin.volume24h, 0)
-  const totalVolumeChange = 26.9 // 모의 데이터
+  const totalVolumeChange = 26.9 // 모의 데이터 (실제로는 API에서 가져올 수 있음)
   const totalTVL = totalVolume * 1.05
   const totalTVLChange = -0.32
+
+  if (loading) {
+    return (
+      <main className="flex-1 p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-400">로딩 중...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="flex-1 p-8 overflow-y-auto">
@@ -141,7 +263,7 @@ export function TradingPage() {
           <div className="rounded-xl border border-primary/20 bg-black/40 p-6 backdrop-blur-sm w-fit">
             <p className="text-sm text-gray-400 mb-2">1일 거래량</p>
             <p className="text-2xl font-bold text-white mb-1">
-              ${(totalVolume / 1_000_000_000).toFixed(3)}B
+              ₩{(totalVolume / 1_000_000_000).toFixed(3)}B
             </p>
             <div className="flex items-center gap-1 text-green-400">
               <ArrowUp className="w-4 h-4" />
@@ -236,7 +358,6 @@ export function TradingPage() {
                       )}
                     </div>
                   </th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">1D 차트</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,11 +387,16 @@ export function TradingPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-right">
-                        <p className="text-white font-semibold">
-                          ${coin.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </p>
-                      </td>
+                        <td className="p-4 text-right">
+                          <p className="text-white font-semibold">
+                            {coin.price < 1 
+                              ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}` // 소수점 8자리까지, 끝의 0 제거
+                              : coin.price < 1000
+                              ? `₩${coin.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                              : `₩${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}` // 1000원 이상은 정수
+                            }
+                          </p>
+                        </td>
                       <td className="p-4 text-right">
                         <div
                           className={cn(
@@ -326,29 +452,10 @@ export function TradingPage() {
                         </div>
                       </td>
                       <td className="p-4 text-right text-gray-400">
-                        ${(coin.fdv / 1_000_000_000).toFixed(2)}B
+                        ₩{(coin.fdv / 1_000_000_000).toFixed(2)}B
                       </td>
                       <td className="p-4 text-right text-gray-400">
-                        ${(coin.volume24h / 1_000_000).toFixed(0)}M
-                      </td>
-                      <td className="p-4 text-right">
-                        {/* 간단한 차트 시뮬레이션 */}
-                        <div className="inline-flex items-end h-8 gap-px">
-                          {Array.from({ length: 24 }).map((_, i) => {
-                            const height = 20 + Math.random() * 60
-                            const isPositive = Math.random() > 0.3
-                            return (
-                              <div
-                                key={i}
-                                className={cn(
-                                  "w-1 rounded-t",
-                                  isPositive ? "bg-green-400" : "bg-red-400"
-                                )}
-                                style={{ height: `${height}%` }}
-                              />
-                            )
-                          })}
-                        </div>
+                        ₩{(coin.volume24h / 1_000_000).toFixed(0)}M
                       </td>
                     </tr>
                   )

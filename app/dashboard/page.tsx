@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/sidebar"
 import { PortfolioSummary } from "@/components/portfolio-summary"
-import { CoinList } from "@/components/coin-list"
+import { HoldingsList } from "@/components/holdings-list"
+import { WelcomePopup } from "@/components/welcome-popup"
 
 export default function DashboardPage() {
   return (
@@ -17,13 +18,16 @@ export default function DashboardPage() {
           {/* 내 자산 요약 */}
           <PortfolioSummary />
 
-          {/* 코인 랭킹 */}
+          {/* 보유 코인 */}
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-6">인기 코인</h2>
-            <CoinList />
+            <h2 className="text-2xl font-semibold text-white mb-6">보유 코인</h2>
+            <HoldingsList />
           </div>
         </div>
       </main>
+      
+      {/* 환영 팝업 */}
+      <WelcomePopup />
     </div>
   )
 }
