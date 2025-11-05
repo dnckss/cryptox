@@ -55,7 +55,7 @@ class SeededRandom {
  * @param coinId 코인 ID
  * @returns 다음 변동 정보
  */
-function generateNextPriceChange(coinId: string): NextPriceChange {
+export function generateNextPriceChange(coinId: string): NextPriceChange {
   // 코인 ID를 시드로 사용
   const seed = coinId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
   const random = new SeededRandom(seed + Date.now())

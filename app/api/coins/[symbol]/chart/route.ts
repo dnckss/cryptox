@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getCoinDataBySymbol, getCoinById } from "@/lib/mock-coins-service"
+import { getCoinDataBySymbol } from "@/lib/mock-coins-service"
 import { getCoinById as getCoinDefinition } from "@/lib/mock-coins"
 
 /**
