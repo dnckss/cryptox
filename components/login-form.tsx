@@ -83,7 +83,7 @@ export function LoginForm({
                   Google로 로그인
                 </Button>
               </Field>
-              <Field>
+              {/* <Field>
                 <Button
                   type="button"
                   onClick={() => handleSocialLogin("apple")}
@@ -110,7 +110,7 @@ export function LoginForm({
                   </svg>
                   Kakao로 로그인
                 </Button>
-              </Field>
+              </Field> */}
               {loading && (
                 <Field>
                   <p className="text-center text-sm text-gray-400">
