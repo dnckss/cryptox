@@ -250,11 +250,11 @@ export function TradingPage() {
   }
 
   return (
-    <main className="flex-1 p-8 overflow-y-auto">
+    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
       <div className="max-w-7xl mx-auto">
         {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">거래</h1>
+        <div className="mb-6 lg:mb-8">
+          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">거래</h1>
           <p className="text-gray-400">시장 데이터와 코인 정보를 확인하세요</p>
         </div>
 
@@ -314,8 +314,8 @@ export function TradingPage() {
           </div>
         </div>
 
-        {/* 코인 테이블 */}
-        <div className="rounded-xl border border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
+        {/* 코인 테이블 - 데스크톱 */}
+        <div className="hidden lg:block rounded-xl border border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -377,7 +377,7 @@ export function TradingPage() {
                         </div>
                       </td>
                         <td className="p-4 text-right">
-                          <p className="text-white font-semibold">
+                          <p className="text-white font-semibold tabular-nums">
                             {coin.price < 1 
                               ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}` // 소수점 8자리까지, 끝의 0 제거
                               : coin.price < 1000
@@ -398,7 +398,7 @@ export function TradingPage() {
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           )}
-                          <span className="font-medium">
+                          <span className="font-medium tabular-nums">
                             {change1h >= 0 ? "+" : ""}
                             {change1h.toFixed(2)}%
                           </span>
@@ -416,7 +416,7 @@ export function TradingPage() {
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           )}
-                          <span className="font-medium">
+                          <span className="font-medium tabular-nums">
                             {change1d >= 0 ? "+" : ""}
                             {change1d.toFixed(2)}%
                           </span>
@@ -434,16 +434,16 @@ export function TradingPage() {
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           )}
-                          <span className="font-medium">
+                          <span className="font-medium tabular-nums">
                             {change1w >= 0 ? "+" : ""}
                             {change1w.toFixed(2)}%
                           </span>
                         </div>
                       </td>
-                      <td className="p-4 text-right text-gray-400">
+                      <td className="p-4 text-right text-gray-400 tabular-nums">
                         ₩{(coin.fdv / 1_000_000_000).toFixed(2)}B
                       </td>
-                      <td className="p-4 text-right text-gray-400">
+                      <td className="p-4 text-right text-gray-400 tabular-nums">
                         ₩{(coin.volume24h / 1_000_000).toFixed(0)}M
                       </td>
                     </tr>
@@ -452,6 +452,65 @@ export function TradingPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* 코인 카드 - 모바일 */}
+        <div className="lg:hidden space-y-3">
+          {sortedCoins.map((coin, index) => {
+            const change1d = coin.change1d
+            return (
+              <div
+                key={coin.id}
+                onClick={() => router.push(`/dashboard/coin/${coin.symbol.toLowerCase()}`)}
+                className="p-4 rounded-lg border border-primary/20 bg-black/40 backdrop-blur-sm hover:bg-primary/5 transition-colors cursor-pointer min-h-[56px]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20 flex-shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        {coin.icon}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium text-sm truncate">{coin.name}</p>
+                      <p className="text-gray-400 text-xs">{coin.symbol}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-white font-semibold text-sm tabular-nums">
+                        {coin.price < 1 
+                          ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}`
+                          : coin.price < 1000
+                          ? `₩${coin.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                          : `₩${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        }
+                      </p>
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1 text-xs mt-1",
+                          change1d >= 0 ? "text-green-400" : "text-red-400"
+                        )}
+                      >
+                        {change1d >= 0 ? (
+                          <ArrowUp className="w-3 h-3" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3" />
+                        )}
+                        <span className="font-medium tabular-nums">
+                          {change1d >= 0 ? "+" : ""}
+                          {change1d.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right text-gray-400 text-xs tabular-nums">
+                      <p>₩{(coin.volume24h / 1_000_000).toFixed(0)}M</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </main>

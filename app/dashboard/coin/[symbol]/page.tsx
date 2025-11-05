@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { CoinDetailPage } from "@/components/coin-detail-page"
 
 export default async function CoinDetailRoute({
@@ -9,10 +9,9 @@ export default async function CoinDetailRoute({
   const { symbol } = await params
 
   return (
-    <div className="min-h-screen bg-black flex">
-      <Sidebar />
+    <AppLayout>
       <CoinDetailPage symbol={symbol} />
-    </div>
+    </AppLayout>
   )
 }
 

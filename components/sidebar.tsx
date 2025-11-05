@@ -16,9 +16,15 @@ import {
   Trophy,
   Shield,
   Users,
+  Menu,
 } from "lucide-react"
 
-export function Sidebar() {
+interface SidebarProps {
+  onMenuClick?: () => void
+  showMenuButton?: boolean
+}
+
+export function Sidebar({ onMenuClick, showMenuButton = false }: SidebarProps = {}) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -85,10 +91,12 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-primary/20 bg-black/50 h-screen sticky top-0 flex flex-col">
-      {/* 로고 */}
-      <div className="p-6 border-b border-primary/20">
-        <h1 className="text-2xl font-bold text-white">cryptoX</h1>
-      </div>
+      {/* 로고 - 드로어에서는 표시하지 않음 */}
+      {!showMenuButton && (
+        <div className="p-6 border-b border-primary/20">
+          <h1 className="text-2xl font-bold text-white">cryptoX</h1>
+        </div>
+      )}
 
       {/* 메뉴 */}
       <nav className="flex-1 p-4 space-y-2">

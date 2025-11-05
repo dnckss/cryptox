@@ -122,5 +122,28 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: contain;
+  }
+  
+  /* 터치 타겟 최소 크기 */
+  button, a, input[type="button"], input[type="submit"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* 숫자 tabular-nums 기본 적용 */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* 모달/시트 내부 스크롤 안정화 */
+  [data-modal], [data-sheet] {
+    overscroll-behavior: contain;
+  }
+  
+  /* 포커스 스타일 개선 */
+  *:focus-visible {
+    outline: 2px solid oklch(0.7 0.215 294.65);
+    outline-offset: 2px;
   }
 }

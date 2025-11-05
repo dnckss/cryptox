@@ -1,12 +1,11 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { HistoryPage } from "@/components/history-page"
 
 export default function History() {
   return (
-    <div className="flex min-h-screen bg-black">
-      <Sidebar />
+    <AppLayout>
       <HistoryPage />
-    </div>
+    </AppLayout>
   )
 }
 

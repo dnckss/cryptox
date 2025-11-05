@@ -1,14 +1,13 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { SettingsPage } from "@/components/settings-page"
 
 export default function Settings() {
   return (
-    <div className="flex min-h-screen bg-black">
-      <Sidebar />
-      <main className="flex-1 p-8">
+    <AppLayout>
+      <div className="p-4 sm:p-6 lg:p-8">
         <SettingsPage />
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }
 

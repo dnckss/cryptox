@@ -1,12 +1,11 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { WalletPage } from "@/components/wallet-page"
 
 export default function Wallet() {
   return (
-    <div className="flex min-h-screen bg-black">
-      <Sidebar />
+    <AppLayout>
       <WalletPage />
-    </div>
+    </AppLayout>
   )
 }
 

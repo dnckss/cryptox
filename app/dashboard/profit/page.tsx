@@ -1,12 +1,11 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { ProfitPage } from "@/components/profit-page"
 
 export default function ProfitHistoryPage() {
   return (
-    <div className="min-h-screen bg-black flex">
-      <Sidebar />
+    <AppLayout>
       <ProfitPage />
-    </div>
+    </AppLayout>
   )
 }
 

@@ -1,12 +1,11 @@
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { TradingPage } from "@/components/trading-page"
 
 export default function TradingRoute() {
   return (
-    <div className="min-h-screen bg-black flex">
-      <Sidebar />
+    <AppLayout>
       <TradingPage />
-    </div>
+    </AppLayout>
   )
 }
 

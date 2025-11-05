@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TradingViewChart, type CandleDataPoint, type LineDataPoint } from "@/components/tradingview-chart"
+import { OrderTicketSheet } from "@/components/order-ticket-sheet"
 
 interface CoinDetailPageProps {
   symbol: string
@@ -94,6 +95,9 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
   
   // 거래 처리 중
   const [trading, setTrading] = useState(false)
+  
+  // 모바일 주문 티켓 시트 상태
+  const [orderSheetOpen, setOrderSheetOpen] = useState(false)
 
   // 실제 거래 내역 상태
   const [transactions, setTransactions] = useState<Array<{
@@ -465,9 +469,9 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
   }, [sellAmount, coin.price])
 
-  // 구매 함수
-  const handleBuy = async () => {
-    const krwAmount = parseFloat(buyAmountKRW) || 0
+  // 구매 함수 (OrderTicketSheet에서도 사용 가능하도록)
+  const handleBuy = async (amountKRW?: number) => {
+    const krwAmount = amountKRW || parseFloat(buyAmountKRW) || 0
     if (krwAmount <= 0) {
       alert("구매 금액을 입력해주세요.")
       return
@@ -528,20 +532,21 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
       }
     } catch (error: any) {
       alert(error.message || "구매에 실패했습니다.")
+      throw error
     } finally {
       setTrading(false)
     }
   }
 
-  // 판매 함수
-  const handleSell = async () => {
-    const coinAmount = parseFloat(sellAmount) || 0
-    if (coinAmount <= 0) {
+  // 판매 함수 (OrderTicketSheet에서도 사용 가능하도록)
+  const handleSell = async (coinAmount?: number) => {
+    const sellCoinAmount = coinAmount || parseFloat(sellAmount) || 0
+    if (sellCoinAmount <= 0) {
       alert("판매 수량을 입력해주세요.")
       return
     }
 
-    if (!holding || holding.amount < coinAmount) {
+    if (!holding || holding.amount < sellCoinAmount) {
       alert(`보유량이 부족합니다. (보유: ${holding?.amount.toFixed(8) || 0})`)
       return
     }
@@ -563,7 +568,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
           coinId: coin.id,
           coinName: coin.name,
           coinSymbol: coin.symbol,
-          amount: coinAmount, // 코인 수량
+          amount: sellCoinAmount, // 코인 수량
           price: coin.price,
         }),
       })
@@ -576,7 +581,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
       const result = await response.json()
       if (result.success) {
         alert(
-          `${coin.symbol} ${coinAmount.toFixed(8)}개 판매 완료!\n` +
+          `${coin.symbol} ${sellCoinAmount.toFixed(8)}개 판매 완료!\n` +
           `총 금액: ₩${result.data.totalValue.toLocaleString()}`
         )
         
@@ -602,14 +607,10 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
         
         // 대시보드 업데이트를 위한 이벤트 발생 (부드러운 업데이트)
         window.dispatchEvent(new CustomEvent('tradeCompleted'))
-        
-        // 대시보드로 리다이렉트하여 즉시 업데이트 확인
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 500)
       }
     } catch (error: any) {
       alert(error.message || "판매에 실패했습니다.")
+      throw error
     } finally {
       setTrading(false)
     }
@@ -728,50 +729,51 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
 
 
   return (
-    <main className="flex-1 p-8 overflow-y-auto">
+    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-20 lg:pb-8">
       <div className="max-w-7xl mx-auto">
         {/* 브레드크럼 및 헤더 */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="mb-4 lg:mb-6">
+          <div className="flex items-center gap-3 mb-3 lg:mb-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
-              className="text-white hover:bg-primary/10"
+              className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]"
+              aria-label="뒤로가기"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Link href="/dashboard/trading" className="hover:text-white transition-colors">
+            <div className="hidden sm:flex items-center gap-1 text-sm text-gray-400">
+              <Link href="/dashboard/trading" className="hover:text-white transition-colors flex items-center">
                 탐색
               </Link>
-              <span>/</span>
-              <span>토큰</span>
-              <span>/</span>
-              <span className="text-white">{coin.symbol}</span>
+              <span className="flex items-center">/</span>
+              <span className="flex items-center">토큰</span>
+              <span className="flex items-center">/</span>
+              <span className="text-white flex items-center">{coin.symbol}</span>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-xl font-bold text-primary">{coin.symbol[0]}</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-lg sm:text-xl font-bold text-primary">{coin.symbol[0]}</span>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">{coin.name}</h1>
-                <p className="text-gray-400">{coin.symbol}</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">{coin.name}</h1>
+                <p className="text-gray-400 text-sm">{coin.symbol}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-primary/10">
+            <div className="hidden lg:flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]">
                 <Settings className="w-5 h-5" />
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* 왼쪽 컬럼 (차트, 통계, 트랜잭션 풀) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
             {/* 가격 및 차트 */}
             <Card className="bg-transparent border-primary/20">
               <CardContent className="p-6">
@@ -819,7 +821,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                 </div>
 
                 {/* 차트 영역 */}
-                <div className="relative h-80 mb-4 overflow-hidden chart-container">
+                <div className="relative h-80 sm:h-[320px] mb-4 overflow-hidden chart-container">
                   {chartLoading ? (
                     <div className="flex items-center justify-center h-full">
                       <p className="text-gray-400">차트 로딩 중...</p>
@@ -1004,8 +1006,8 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
             </Card>
           </div>
 
-          {/* 오른쪽 컬럼 (거래 인터페이스, 정보) */}
-          <div className="space-y-6">
+          {/* 오른쪽 컬럼 (거래 인터페이스, 정보) - 데스크톱만 */}
+          <div className="hidden lg:block space-y-6">
             {/* 거래 인터페이스 */}
             <Card className="bg-transparent border-primary/20">
               <CardHeader>
@@ -1036,13 +1038,16 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                       <p className="text-sm text-gray-400 mb-2">구매 금액 (원화)</p>
                       <div className="mb-4">
                         <Input
-                          type="number"
-                          value={buyAmountKRW}
-                          onChange={(e) => setBuyAmountKRW(e.target.value)}
+                          type="text"
+                          value={buyAmountKRW ? parseFloat(buyAmountKRW || "0").toLocaleString("ko-KR") : ""}
+                          onChange={(e) => {
+                            // 숫자만 추출 (쉼표 제거)
+                            const numericValue = e.target.value.replace(/[^\d]/g, "")
+                            setBuyAmountKRW(numericValue || "0")
+                          }}
                           placeholder="0"
-                          className="w-full bg-black/40 border-primary/20 text-white text-3xl font-bold text-center py-6"
-                          step="1000"
-                          min="0"
+                          className="w-full bg-black/40 border-primary/20 text-white text-3xl font-bold text-center py-6 tabular-nums"
+                          inputMode="numeric"
                         />
                         <p className="text-sm text-gray-400 mt-2 text-center">
                           ≈ {parseFloat(buyAmount || "0").toFixed(8)} {coin.symbol}
@@ -1054,26 +1059,38 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setBuyAmountKRW("100000")}
-                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10"
-                        >
-                          ₩10만
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setBuyAmountKRW("500000")}
-                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10"
-                        >
-                          ₩50만
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setBuyAmountKRW("1000000")}
-                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10"
+                          onClick={() => setBuyAmountKRW((prev) => {
+                            const current = parseFloat(prev || "0") || 0
+                            const newValue = current + 1000000
+                            return String(newValue)
+                          })}
+                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10 min-h-[44px]"
                         >
                           ₩100만
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBuyAmountKRW((prev) => {
+                            const current = parseFloat(prev || "0") || 0
+                            const newValue = current + 10000000
+                            return String(newValue)
+                          })}
+                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10 min-h-[44px]"
+                        >
+                          ₩1000만
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBuyAmountKRW((prev) => {
+                            const current = parseFloat(prev || "0") || 0
+                            const newValue = current + 50000000
+                            return String(newValue)
+                          })}
+                          className="flex-1 bg-transparent border-primary/20 text-white hover:bg-primary/10 min-h-[44px]"
+                        >
+                          ₩5000만
                         </Button>
                       </div>
                     </div>
@@ -1097,9 +1114,9 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     </div>
 
                     <Button
-                      onClick={handleBuy}
+                      onClick={() => handleBuy()}
                       disabled={trading || parseFloat(buyAmountKRW) <= 0}
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-h-[44px]"
                     >
                       {trading ? "처리 중..." : "구매"}
                     </Button>
@@ -1213,9 +1230,9 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                       </div>
                     ) : (
                       <Button
-                        onClick={handleSell}
+                        onClick={() => handleSell()}
                         disabled={trading || parseFloat(sellAmount) <= 0 || parseFloat(sellAmount) > holding.amount}
-                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-h-[44px]"
                       >
                         {trading ? "처리 중..." : "판매"}
                       </Button>
@@ -1249,6 +1266,27 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
               </CardContent>
             </Card>
           </div>
+
+          {/* 모바일 거래 버튼 */}
+          <div className="lg:hidden fixed bottom-20 right-4 z-20">
+            <Button
+              onClick={() => setOrderSheetOpen(true)}
+              className="w-14 h-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg min-w-[44px] min-h-[44px]"
+              aria-label="거래하기"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* 모바일 주문 티켓 시트 */}
+          <OrderTicketSheet
+            isOpen={orderSheetOpen}
+            onClose={() => setOrderSheetOpen(false)}
+            coin={coin}
+            onBuy={handleBuy}
+            onSell={handleSell}
+            holding={holding}
+          />
         </div>
       </div>
     </main>
