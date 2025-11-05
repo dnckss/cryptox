@@ -12,10 +12,13 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [nickname, setNickname] = useState("")
+  const [originalNickname, setOriginalNickname] = useState("") // 원본 닉네임 저장 (중복 체크용)
   const [email, setEmail] = useState("")
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [theme, setTheme] = useState<"dark" | "light">("dark")
   const [language, setLanguage] = useState("ko")
+  const [nicknameError, setNicknameError] = useState("")
+  const [checkingNickname, setCheckingNickname] = useState(false)
 
   useEffect(() => {
     async function loadProfile() {
@@ -47,7 +50,9 @@ export function SettingsPage() {
             console.error("프로필 로드 실패:", profileError)
           }
         } else if (profile) {
-          setNickname(profile.nickname || "")
+          const savedNickname = profile.nickname || ""
+          setNickname(savedNickname)
+          setOriginalNickname(savedNickname) // 원본 닉네임 저장
         }
 
         // 로컬 스토리지에서 설정 불러오기
@@ -90,6 +95,25 @@ export function SettingsPage() {
       // 닉네임 검증 (공백 제거)
       const trimmedNickname = nickname.trim()
       
+      // 닉네임이 변경되었고 비어있지 않은 경우 중복 체크
+      if (trimmedNickname && trimmedNickname !== originalNickname) {
+        setCheckingNickname(true)
+        setNicknameError("")
+        
+        const checkResponse = await fetch(
+          `/api/user/nickname/check?nickname=${encodeURIComponent(trimmedNickname)}`
+        )
+        const checkResult = await checkResponse.json()
+        
+        setCheckingNickname(false)
+        
+        if (!checkResult.success || !checkResult.available) {
+          setNicknameError(checkResult.message || "이미 사용 중인 닉네임입니다.")
+          setSaving(false)
+          return
+        }
+      }
+      
       // 프로필 업데이트 또는 생성
       const { data: profileData, error: profileError } = await supabase
         .from("user_profiles")
@@ -110,7 +134,10 @@ export function SettingsPage() {
 
       // 저장된 닉네임으로 상태 업데이트
       if (profileData && profileData.length > 0) {
-        setNickname(profileData[0].nickname || "")
+        const savedNickname = profileData[0].nickname || ""
+        setNickname(savedNickname)
+        setOriginalNickname(savedNickname) // 원본 닉네임 업데이트
+        setNicknameError("") // 에러 메시지 초기화
       }
 
       // 로컬 스토리지에 설정 저장
@@ -171,16 +198,32 @@ export function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="nickname" className="text-gray-300">닉네임</Label>
-            <Input
-              id="nickname"
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="닉네임을 입력하세요"
-              maxLength={20}
-              className="bg-black/60 border-primary/20 text-white"
-            />
-            <p className="text-xs text-gray-500">최대 20자까지 입력 가능합니다</p>
+            <div className="relative">
+              <Input
+                id="nickname"
+                type="text"
+                value={nickname}
+                onChange={(e) => {
+                  setNickname(e.target.value)
+                  setNicknameError("") // 입력 시 에러 메시지 초기화
+                }}
+                placeholder="닉네임을 입력하세요"
+                maxLength={20}
+                className={`bg-black/60 border-primary/20 text-white ${
+                  nicknameError ? "border-red-500" : ""
+                }`}
+              />
+              {checkingNickname && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                </div>
+              )}
+            </div>
+            {nicknameError ? (
+              <p className="text-xs text-red-400">{nicknameError}</p>
+            ) : (
+              <p className="text-xs text-gray-500">최대 20자까지 입력 가능합니다</p>
+            )}
           </div>
         </CardContent>
       </Card>

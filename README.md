@@ -47,6 +47,28 @@ Supabase 대시보드에서 다음 소셜 로그인 프로바이더를 설정하
 
 각 프로바이더의 OAuth 클라이언트 ID와 Secret을 Supabase에 설정해야 합니다.
 
+#### Redirect URL 설정 (중요!)
+
+**Supabase 대시보드** → **Authentication** → **URL Configuration**에서 다음을 설정하세요:
+
+1. **Site URL**: 
+   - 프로덕션: `https://your-app.vercel.app`
+   - 또는 기본값 유지
+
+2. **Redirect URLs**에 다음을 모두 추가:
+   ```
+   http://localhost:3000/auth/callback
+   https://your-app.vercel.app/auth/callback
+   https://your-app.vercel.app/**
+   ```
+
+**각 OAuth Provider (Google, Apple, Kakao) 설정에서도 Redirect URI를 추가해야 합니다:**
+- Google Cloud Console: `http://localhost:3000/auth/callback` 및 Vercel 도메인 추가
+- Apple Developer: Redirect URI 설정 확인
+- Kakao Developers: Redirect URI 설정 확인
+
+⚠️ **로컬 개발 시 로그인이 안 되는 경우**: Supabase 대시보드의 Redirect URLs에 `http://localhost:3000/auth/callback`이 추가되어 있는지 확인하세요.
+
 ### 4. 개발 서버 실행
 
 ```bash
