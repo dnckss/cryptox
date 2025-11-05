@@ -110,7 +110,7 @@ export function ProfitPage() {
                 createdAt: tx.createdAt,
               }
             })
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) // 최신순 정렬
+            .sort((a: ProfitRecord, b: ProfitRecord) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) // 최신순 정렬
           
           setProfitRecords(profits)
           setFilteredProfitRecords(profits)
