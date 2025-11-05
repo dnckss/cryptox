@@ -261,7 +261,7 @@ export function SettingsPage() {
       </Card>
 
       {/* 테마 설정 */}
-      <Card className="border-primary/20 bg-black/40">
+      {/* <Card className="border-primary/20 bg-black/40">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -305,10 +305,10 @@ export function SettingsPage() {
             </button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* 언어 설정 */}
-      <Card className="border-primary/20 bg-black/40">
+      {/* <Card className="border-primary/20 bg-black/40">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -334,7 +334,7 @@ export function SettingsPage() {
             </select>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* 저장 버튼 */}
       <div className="flex justify-end">
