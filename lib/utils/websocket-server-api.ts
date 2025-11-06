@@ -71,9 +71,9 @@ export async function syncPricesFromWebSocketServer(): Promise<Map<string, numbe
  * @returns 가격 또는 null (실패 시)
  */
 export async function getPriceFromWebSocketServer(symbol: string): Promise<number | null> {
+  const normalizedSymbol = symbol.toLowerCase()
   try {
     const baseUrl = getWebSocketServerApiUrl()
-    const normalizedSymbol = symbol.toLowerCase()
     const response = await fetch(`${baseUrl}/api/prices/${normalizedSymbol}`, {
       method: "GET",
       headers: {
