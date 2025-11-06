@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { MobileDrawer } from "@/components/mobile-drawer"
 import { MobileTabs } from "@/components/mobile-tabs"
+import { AnnouncementNotification } from "@/components/announcement-notification"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -16,6 +17,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-black">
+      {/* 공지 알림 */}
+      <AnnouncementNotification />
+      
       {/* 데스크톱 레이아웃 */}
       <div className="hidden lg:flex min-h-screen">
         <Sidebar />

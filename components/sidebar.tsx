@@ -17,6 +17,7 @@ import {
   Shield,
   Users,
   Menu,
+  Bell,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -74,6 +75,7 @@ export function Sidebar({ onMenuClick, showMenuButton = false }: SidebarProps = 
     { href: "/dashboard/history", label: "거래 내역", icon: History },
     { href: "/dashboard/profit", label: "수익 내역", icon: TrendingUp },
     { href: "/dashboard/ranking", label: "랭킹", icon: Trophy },
+    { href: "/dashboard/announcements", label: "공지", icon: Bell },
     { href: "/dashboard/settings", label: "설정", icon: Settings },
   ]
 
@@ -82,6 +84,7 @@ export function Sidebar({ onMenuClick, showMenuButton = false }: SidebarProps = 
     { href: "/dashboard/admin/charges", label: "충전 관리", icon: Shield },
     { href: "/dashboard/admin/users", label: "사용자 통계", icon: Users },
     { href: "/dashboard/admin/coins", label: "코인 관리", icon: TrendingUp },
+    { href: "/dashboard/announcements", label: "공지", icon: Bell },
   ]
 
   // 현재 사용자에 맞는 메뉴 선택
