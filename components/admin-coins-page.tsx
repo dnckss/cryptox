@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Coins, Search, TrendingUp, TrendingDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ArrowUp, ArrowDown } from "lucide-react"
+import { getWebSocketUrl } from "@/lib/utils/websocket-url"
 
 interface AdminCoin {
   coinId: string
@@ -74,9 +75,7 @@ export function AdminCoinsPage() {
     }
 
     // WebSocket 연결 설정
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/coins`
+    const wsUrl = getWebSocketUrl()
 
     const ws = new WebSocket(wsUrl)
 

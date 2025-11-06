@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { getWebSocketUrl } from "@/lib/utils/websocket-url"
 
 interface AdminCoinDetailPageProps {
   symbol: string
@@ -57,9 +58,7 @@ export function AdminCoinDetailPage({ symbol }: AdminCoinDetailPageProps) {
       }
 
       // WebSocket 연결 설정
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-      const host = window.location.host
-      const wsUrl = `${protocol}//${host}/api/ws/coins`
+      const wsUrl = getWebSocketUrl()
 
       try {
         const ws = new WebSocket(wsUrl)

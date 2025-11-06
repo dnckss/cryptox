@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
+import { getWebSocketUrl } from "@/lib/utils/websocket-url"
 
 interface CoinPriceUpdate {
   coinId: string
@@ -37,10 +38,8 @@ export function useCoinWebSocket(
   useEffect(() => {
     const connect = () => {
       try {
-        // WebSocket URL 생성 (개발/프로덕션 환경 고려)
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-        const host = window.location.host
-        const wsUrl = `${protocol}//${host}/api/ws/coins`
+        // WebSocket URL 생성 (환경 변수 또는 기본값 사용)
+        const wsUrl = getWebSocketUrl()
 
         const ws = new WebSocket(wsUrl)
 

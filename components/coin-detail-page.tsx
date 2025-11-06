@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TradingViewChart, type CandleDataPoint, type LineDataPoint } from "@/components/tradingview-chart"
 import { OrderTicketSheet } from "@/components/order-ticket-sheet"
+import { getWebSocketUrl } from "@/lib/utils/websocket-url"
 
 interface CoinDetailPageProps {
   symbol: string
@@ -659,9 +660,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
 
     // WebSocket 연결 설정
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/coins`
+    const wsUrl = getWebSocketUrl()
 
     const ws = new WebSocket(wsUrl)
 
