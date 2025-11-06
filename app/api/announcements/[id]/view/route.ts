@@ -53,10 +53,25 @@ export async function PATCH(
       // 조회 기록 추가 실패해도 계속 진행
     }
 
+    // 현재 조회수 가져오기
+    const { data: currentAnnouncement, error: fetchError } = await supabase
+      .from("announcements")
+      .select("view_count")
+      .eq("id", id)
+      .single()
+
+    if (fetchError || !currentAnnouncement) {
+      console.error("Error fetching announcement:", fetchError)
+      return NextResponse.json(
+        { error: "Failed to fetch announcement" },
+        { status: 500 }
+      )
+    }
+
     // 조회 횟수 증가
     const { data: announcement, error } = await supabase
       .from("announcements")
-      .update({ view_count: supabase.raw("view_count + 1") })
+      .update({ view_count: (currentAnnouncement.view_count || 0) + 1 })
       .eq("id", id)
       .select()
       .single()
