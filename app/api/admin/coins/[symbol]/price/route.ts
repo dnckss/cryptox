@@ -77,7 +77,8 @@ export async function POST(
     }
 
     // 즉시 가격 업데이트 (클라이언트에서 이미 지연 시간을 처리했으므로)
-    const success = updateCoinPrice(symbol.toLowerCase(), finalNewPrice)
+    // WebSocket 서버 마스터 방식: 로컬과 WebSocket 서버 모두 업데이트
+    const success = await updateCoinPrice(symbol.toLowerCase(), finalNewPrice, true)
     if (success) {
       console.log(
         `📈 코인 ${symbol} 가격 변경 적용: ${finalCurrentPrice.toLocaleString()} → ${finalNewPrice.toLocaleString()} (${priceChangePercent > 0 ? "+" : ""}${priceChangePercent}%)`

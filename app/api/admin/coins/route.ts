@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { isAdmin } from "@/lib/utils/admin"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { syncPricesFromMaster, getAllCoinsData } from "@/lib/mock-coins-service"
+
+// 마지막 동기화 시간 추적 (5초마다 동기화)
+let lastSyncTime = 0
+const SYNC_INTERVAL = 5000 // 5초
 
 /**
  * GET /api/admin/coins
@@ -66,8 +71,14 @@ export async function GET() {
       )
     }
 
+    // 주기적으로 WebSocket 서버에서 가격 동기화 (5초마다)
+    const now = Date.now()
+    if (now - lastSyncTime > SYNC_INTERVAL) {
+      await syncPricesFromMaster(false) // 캐시가 없을 때만 동기화
+      lastSyncTime = now
+    }
+
     // 모든 코인 데이터 가져오기 (거래 내역이 없어도 표시)
-    const { getAllCoinsData } = await import("@/lib/mock-coins-service")
     const allCoinsData = getAllCoinsData()
 
     // 모든 사용자의 구매 거래 조회 (Service Role Key 사용하여 RLS 우회)

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { getCoinDataBySymbol, getCoinDataById } from "@/lib/mock-coins-service"
+import { getCoinBySymbol, getCoinById } from "@/lib/mock-coins"
 
 /**
  * 사용자 보유 코인 상세 정보 조회 API
@@ -52,41 +52,38 @@ export async function GET() {
 
       if (amount <= 0) continue
 
-      // 현재 코인 가격 가져오기 (심볼 또는 ID로 시도)
-      let coinData = getCoinDataBySymbol(coinId)
+      // 코인 기본 정보 가져오기 (가격은 WebSocket에서 받으므로 여기서는 기본 정보만)
+      let coin = getCoinBySymbol(coinId)
       
-      if (!coinData) {
-        coinData = getCoinDataById(coinId)
+      if (!coin) {
+        coin = getCoinById(coinId)
       }
 
-      if (!coinData || coinData.price <= 0) {
-        console.warn(`⚠️ 코인 ${coinId} 가격 정보를 가져올 수 없음`)
+      if (!coin) {
+        console.warn(`⚠️ 코인 ${coinId} 정보를 가져올 수 없음`)
         continue
       }
 
-      // 현재 가치와 투자 원금 계산
-      const currentPrice = coinData.price
-      const currentValue = amount * currentPrice
+      // 가격은 WebSocket에서 받으므로 여기서는 기본 정보만 반환
+      // 클라이언트에서 WebSocket 가격으로 계산하도록 함
       const totalCost = amount * averageBuyPrice
-      const profit = currentValue - totalCost
-      const profitPercent = totalCost > 0 ? (profit / totalCost) * 100 : 0
 
       detailedHoldings.push({
         coinId: coinId,
-        coinName: coinData.name,
-        coinSymbol: coinData.symbol,
+        coinName: coin.name,
+        coinSymbol: coin.symbol,
         amount: amount,
         averageBuyPrice: averageBuyPrice,
-        currentPrice: currentPrice,
-        currentValue: currentValue,
+        currentPrice: 0, // WebSocket에서 받을 가격 (초기값)
+        currentValue: 0, // 클라이언트에서 계산
         totalCost: totalCost,
-        profit: profit,
-        profitPercent: profitPercent,
+        profit: 0, // 클라이언트에서 계산
+        profitPercent: 0, // 클라이언트에서 계산
       })
     }
 
-    // 손익 기준으로 정렬 (손익이 큰 순서대로)
-    detailedHoldings.sort((a, b) => b.profit - a.profit)
+    // 정렬은 클라이언트에서 WebSocket 가격으로 계산한 후 수행
+    // (API에서는 가격을 계산하지 않으므로 여기서 정렬 불가)
 
     return NextResponse.json({
       success: true,

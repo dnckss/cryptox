@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react"
 
 export function PortfolioSummary() {
@@ -11,7 +11,12 @@ export function PortfolioSummary() {
   const [totalAssets, setTotalAssets] = useState(0) // 총 자산 (잔고 + 보유 코인 현재 가치)
   const [coinCount, setCoinCount] = useState(0) // 보유 코인 종목 수
   const [totalCoinCost, setTotalCoinCost] = useState(0) // 보유 코인 구매 원금
-  const [coinProfit, setCoinProfit] = useState(0) // 코인 수익
+  const [coinProfit, setCoinProfit] = useState(0) // 코인 수익 (실시간 업데이트)
+  const [realTimeCoinProfit, setRealTimeCoinProfit] = useState(0) // 실시간 보유 코인 손익
+  
+  // 최신 값 참조용 ref
+  const balanceRef = useRef(0)
+  const totalCoinCostRef = useRef(0)
 
   useEffect(() => {
     async function fetchAssets() {
@@ -23,37 +28,31 @@ export function PortfolioSummary() {
         const result = await response.json()
         if (result.success) {
           setBalance(result.data.balance)
+          balanceRef.current = result.data.balance
           setInitialBalance(result.data.initialBalance)
           setTotalChargedVirtual(result.data.totalChargedVirtual || 0)
-          setTotalAssets(result.data.totalAssets || result.data.balance) // 총 자산
-          setCoinCount(result.data.coinCount || 0) // 보유 코인 종목 수
-          setTotalCoinCost(result.data.totalCoinCost || 0) // 보유 코인 구매 원금
-          setCoinProfit(result.data.coinProfit || 0) // 코인 수익
-          
-          // 디버깅: 계산 확인
-          console.log("📊 자산 계산 확인:", {
-            balance: result.data.balance,
-            initialBalance: result.data.initialBalance,
-            totalChargedVirtual: result.data.totalChargedVirtual || 0,
-            totalAssets: result.data.totalAssets,
-            totalCoinValue: result.data.totalCoinValue,
-            totalCoinCost: result.data.totalCoinCost,
-            coinProfit: result.data.coinProfit,
-            totalInvestment: result.data.initialBalance, // 충전은 이미 initialBalance에 반영됨
-            calculatedProfit: result.data.totalAssets - result.data.initialBalance,
-            profitDifference: (result.data.totalAssets - result.data.initialBalance) - result.data.coinProfit,
-          })
+          // 초기 총 자산은 API에서 받은 값 사용
+          setTotalAssets(result.data.totalAssets || result.data.balance)
+          setCoinCount(result.data.coinCount || 0)
+          setTotalCoinCost(result.data.totalCoinCost || 0)
+          totalCoinCostRef.current = result.data.totalCoinCost || 0
+          setCoinProfit(result.data.coinProfit || 0)
+          // 초기 실시간 손익도 API 값으로 설정
+          setRealTimeCoinProfit(result.data.coinProfit || 0)
         }
       } catch (error) {
         console.error("Failed to load user assets:", error)
         // 폴백 데이터
         setBalance(50_000_000)
+        balanceRef.current = 50_000_000
         setInitialBalance(50_000_000)
         setTotalChargedVirtual(0)
         setTotalAssets(50_000_000)
         setCoinCount(0)
         setTotalCoinCost(0)
+        totalCoinCostRef.current = 0
         setCoinProfit(0)
+        setRealTimeCoinProfit(0)
       } finally {
         setLoading(false)
       }
@@ -61,9 +60,8 @@ export function PortfolioSummary() {
 
     fetchAssets()
     
-    // 1초마다 자산 업데이트 (가격 변동 반영)
-    // 보유 코인 리스트와 동일한 주기로 업데이트하여 딜레이 방지
-    const interval = setInterval(fetchAssets, 1000)
+    // 5초마다 자산 업데이트 (가격 변동 반영)
+    const interval = setInterval(fetchAssets, 5000)
     
     // 거래 완료 이벤트 리스너 (판매/구매 후 즉시 업데이트)
     const handleTradeCompleted = () => {
@@ -71,11 +69,31 @@ export function PortfolioSummary() {
     }
     window.addEventListener('tradeCompleted', handleTradeCompleted)
     
+    // 보유 코인 손익 실시간 업데이트 이벤트 리스너
+    const handleHoldingsProfitUpdated = (event: CustomEvent<{ totalProfit: number }>) => {
+      const newProfit = event.detail.totalProfit
+      setRealTimeCoinProfit(newProfit)
+      // 총 자산 = 잔고 + 보유 코인 구매 원금 + 실시간 손익
+      // = 잔고 + 보유 코인 현재 가치
+      setTotalAssets(balanceRef.current + totalCoinCostRef.current + newProfit)
+    }
+    window.addEventListener('holdingsProfitUpdated', handleHoldingsProfitUpdated as EventListener)
+    
     return () => {
       clearInterval(interval)
       window.removeEventListener('tradeCompleted', handleTradeCompleted)
+      window.removeEventListener('holdingsProfitUpdated', handleHoldingsProfitUpdated as EventListener)
     }
   }, [])
+  
+  // balance와 totalCoinCost가 변경될 때 ref 업데이트
+  useEffect(() => {
+    balanceRef.current = balance
+  }, [balance])
+  
+  useEffect(() => {
+    totalCoinCostRef.current = totalCoinCost
+  }, [totalCoinCost])
 
   // 총 자산 = 잔고 + 보유 코인 현재 가치
   const totalValue = totalAssets

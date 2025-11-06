@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, memo } from "react"
+import { useState, useEffect, memo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getWebSocketUrl } from "@/lib/utils/websocket-url"
 
 // 가격 셀 컴포넌트 (메모이제이션으로 불필요한 리렌더링 방지)
 const PriceCell = memo(({ price }: { price: number }) => (
@@ -35,82 +36,171 @@ interface Holding {
   profitPercent: number // 손익률 (%)
 }
 
+interface CoinPriceUpdate {
+  coinId: string
+  symbol: string
+  price: number
+}
+
 export function HoldingsList() {
   const router = useRouter()
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [loading, setLoading] = useState(true)
-  const [initialLoad, setInitialLoad] = useState(true)
+  const wsRef = useRef<WebSocket | null>(null)
+  const pricesRef = useRef<Map<string, number>>(new Map()) // WebSocket에서 받은 가격 캐시
 
-  // 보유 코인 데이터 로드 및 업데이트 (1초마다)
-  useEffect(() => {
-    async function fetchHoldings() {
-      try {
-        if (initialLoad) {
-          setLoading(true)
+  // 가격 업데이트 시 보유 코인 정보 재계산
+  const updateHoldingsWithPrices = () => {
+    setHoldings(prevHoldings => {
+      let totalProfit = 0 // 총 손익 계산
+      
+      const updatedHoldings = prevHoldings.map(holding => {
+        // WebSocket에서 받은 최신 가격 사용
+        const currentPrice = pricesRef.current.get(holding.coinId) || 
+                           pricesRef.current.get(holding.coinSymbol) || 
+                           holding.currentPrice
+        
+        if (currentPrice <= 0) return holding
+
+        const currentValue = holding.amount * currentPrice
+        const totalCost = holding.amount * holding.averageBuyPrice
+        const profit = currentValue - totalCost
+        const profitPercent = totalCost > 0 ? (profit / totalCost) * 100 : 0
+
+        totalProfit += profit // 총 손익 누적
+
+        return {
+          ...holding,
+          currentPrice,
+          currentValue,
+          profit,
+          profitPercent,
         }
+      })
+      
+      // 총 손익을 이벤트로 전달 (총 자산 업데이트용)
+      window.dispatchEvent(new CustomEvent('holdingsProfitUpdated', {
+        detail: { totalProfit }
+      }))
+      
+      // 손익 기준으로 정렬 (손익이 큰 순서대로)
+      return updatedHoldings.sort((a, b) => b.profit - a.profit)
+    })
+  }
+
+  // WebSocket 연결 및 보유 코인 정보 로드
+  useEffect(() => {
+    let isMounted = true
+
+    // WebSocket 연결 (실시간 가격 업데이트)
+    const wsUrl = getWebSocketUrl()
+    const ws = new WebSocket(wsUrl)
+    wsRef.current = ws
+
+    ws.onopen = async () => {
+      console.log("✅ 보유 코인 목록 WebSocket 연결 성공")
+      
+      // WebSocket 연결 후 보유 코인 정보 가져오기
+      try {
+        setLoading(true)
         const response = await fetch("/api/user/holdings/detailed")
         if (!response.ok) {
           throw new Error("Failed to fetch holdings")
         }
         const result = await response.json()
-        if (result.success) {
-          if (initialLoad) {
-            // 초기 로드: 전체 데이터 설정
-            setHoldings(result.data || [])
-            setInitialLoad(false)
-            setLoading(false)
-          } else {
-            // 이후 업데이트: 가격 정보만 업데이트
-            setHoldings(prevHoldings => {
-              const newHoldings = prevHoldings.map(prevHolding => {
-                const newData = result.data.find((h: Holding) => h.coinId === prevHolding.coinId)
-                if (!newData) return prevHolding
-
-                // 가격 관련 정보만 업데이트 (고정 정보는 유지)
-                return {
-                  ...prevHolding,
-                  currentPrice: newData.currentPrice,
-                  currentValue: newData.currentValue,
-                  profit: newData.profit,
-                  profitPercent: newData.profitPercent,
-                }
-              })
-              return newHoldings
-            })
-          }
-        } else {
-          if (initialLoad) {
-            setHoldings([])
-            setInitialLoad(false)
-            setLoading(false)
-          }
+        
+        if (result.success && isMounted) {
+          // 보유 코인 정보 설정 (가격은 WebSocket에서 받음)
+          setHoldings(result.data || [])
+          
+          // 가격은 WebSocket initial 메시지에서 받을 때까지 대기
+          // WebSocket initial 메시지가 오면 updateHoldingsWithPrices()가 호출됨
+        } else if (isMounted) {
+          setHoldings([])
         }
       } catch (error) {
         console.error("Failed to load holdings:", error)
-        if (initialLoad) {
+        if (isMounted) {
           setHoldings([])
-          setInitialLoad(false)
+        }
+      } finally {
+        if (isMounted) {
           setLoading(false)
         }
       }
     }
 
-    fetchHoldings()
-    
-    // 1초마다 업데이트 (초기 로드 포함)
-    const interval = setInterval(fetchHoldings, 1000)
-    
-    // 거래 완료 이벤트 리스너 (판매/구매 후 즉시 업데이트)
-    const handleTradeCompleted = () => {
-      fetchHoldings()
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        
+        if (message.type === "initial") {
+          // 초기 데이터: 모든 코인 가격 저장
+          const updates: CoinPriceUpdate[] = message.data
+          updates.forEach((update) => {
+            pricesRef.current.set(update.coinId, update.price)
+            pricesRef.current.set(update.symbol, update.price)
+          })
+          updateHoldingsWithPrices()
+        } else if (message.type === "update") {
+          // 가격 업데이트: 해당 코인 가격만 업데이트
+          const updates: CoinPriceUpdate[] = message.data
+          let hasRelevantUpdate = false
+          
+          updates.forEach((update) => {
+            // 가격 캐시에 저장 (보유 코인인지 확인은 updateHoldingsWithPrices에서)
+            pricesRef.current.set(update.coinId, update.price)
+            pricesRef.current.set(update.symbol, update.price)
+            hasRelevantUpdate = true
+          })
+          
+          if (hasRelevantUpdate) {
+            updateHoldingsWithPrices()
+          }
+        }
+      } catch (error) {
+        console.error("WebSocket 메시지 파싱 오류:", error)
+      }
     }
+
+    ws.onerror = (error) => {
+      console.error("WebSocket 에러:", error)
+    }
+
+    ws.onclose = () => {
+      console.log("보유 코인 목록 WebSocket 연결 종료")
+    }
+
+    // 거래 완료 이벤트 리스너 (보유 코인 정보 갱신 필요)
+    const handleTradeCompleted = async () => {
+      try {
+        const response = await fetch("/api/user/holdings/detailed")
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && isMounted) {
+            // 보유 코인 정보만 업데이트 (가격은 WebSocket에서 받음)
+            setHoldings(result.data || [])
+            
+            // WebSocket 가격으로 재계산 (가격은 이미 pricesRef에 있음)
+            updateHoldingsWithPrices()
+          }
+        }
+      } catch (error) {
+        console.error("Failed to refresh holdings after trade:", error)
+      }
+    }
+    
     window.addEventListener('tradeCompleted', handleTradeCompleted)
     
     return () => {
-      clearInterval(interval)
+      isMounted = false
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
       window.removeEventListener('tradeCompleted', handleTradeCompleted)
     }
-  }, [initialLoad])
+  }, [])
 
   if (loading) {
     return (

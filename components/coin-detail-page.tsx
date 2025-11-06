@@ -128,47 +128,39 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
   }
 
+  // 통계 데이터만 API에서 가져오기 (가격은 WebSocket에서만 받음)
   useEffect(() => {
-    async function fetchCoinData() {
+    async function fetchStatsData() {
       try {
-        setLoading(true)
         const response = await fetch(`/api/coins/${symbol}`)
-        if (!response.ok) {
-          throw new Error("Failed to fetch coin data")
-        }
-        const result = await response.json()
-        if (result.data) {
-          // 실제 데이터 검증
-          if (result.data.price && result.data.price > 0) {
-            setCoin(result.data)
-            
+        if (response.ok) {
+          const result = await response.json()
+          if (result.data && !fixedStats) {
             // 통계는 처음 한 번만 고정값으로 설정
-            if (!fixedStats) {
-              setFixedStats({
-                tvl: result.data.tvl || 0,
-                marketCap: result.data.marketCap || 0,
-                fdv: result.data.fdv || 0,
-                volume24h: result.data.volume24h || 0,
-              })
-            }
-          } else {
-            console.warn("⚠️ 유효하지 않은 가격 데이터")
-            throw new Error("Invalid price data")
+            setFixedStats({
+              tvl: result.data.tvl || 0,
+              marketCap: result.data.marketCap || 0,
+              fdv: result.data.fdv || 0,
+              volume24h: result.data.volume24h || 0,
+            })
           }
-        } else {
-          throw new Error("No data received")
         }
       } catch (error) {
-        console.error("❌ 코인 데이터 로드 오류:", error)
-        // 에러 시 폴백 데이터 사용
-        setCoin(getFallbackCoinData(symbol))
-      } finally {
-        setLoading(false)
+        console.error("❌ 통계 데이터 로드 오류:", error)
+        // 에러 시 기본값 사용
+        if (!fixedStats) {
+          setFixedStats({
+            tvl: 0,
+            marketCap: 0,
+            fdv: 0,
+            volume24h: 0,
+          })
+        }
       }
     }
 
-    fetchCoinData()
-  }, [symbol])
+    fetchStatsData()
+  }, [symbol, fixedStats])
 
   // 차트 데이터 가져오기
   useEffect(() => {
@@ -617,51 +609,10 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     }
   }
 
-  // WebSocket을 통한 실시간 가격 업데이트
+  // WebSocket을 통한 실시간 가격 업데이트 (초기 데이터도 WebSocket에서 받음)
   useEffect(() => {
-    if (loading || !coin) return
-
-    // 가격 업데이트 수신 핸들러
-    const handleUpdate = (updates: any[]) => {
-      const update = updates.find(
-        (u: any) =>
-          u.coinId === coin.id ||
-          u.symbol?.toUpperCase() === symbol.toUpperCase()
-      )
-      if (update) {
-        setCoin((prev) => ({
-          ...prev,
-          price: update.price,
-          change1h: update.change1h,
-          change24h: update.change24h,
-          change1w: update.change1w,
-          change24hValue: parseFloat((update.change24h * update.price / 100).toFixed(2)),
-        }))
-      }
-    }
-
-    // 초기 데이터 수신 핸들러
-    const handleInitial = (initialCoins: any[]) => {
-      const initialCoin = initialCoins.find(
-        (c: any) =>
-          c.coinId === coin.id ||
-          c.symbol?.toUpperCase() === symbol.toUpperCase()
-      )
-      if (initialCoin) {
-        setCoin((prev) => ({
-              ...prev,
-          price: initialCoin.price,
-          change1h: initialCoin.change1h,
-          change24h: initialCoin.change24h,
-          change1w: initialCoin.change1w,
-          change24hValue: parseFloat((initialCoin.change24h * initialCoin.price / 100).toFixed(2)),
-            }))
-          }
-    }
-
-    // WebSocket 연결 설정
+    // WebSocket 연결 시작 (coin이 없어도 연결하여 initial 메시지에서 데이터 받음)
     const wsUrl = getWebSocketUrl()
-
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
@@ -671,20 +622,72 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
+        
         if (message.type === "initial") {
-          handleInitial(message.data)
+          // 초기 데이터 수신 (WebSocket에서 모든 코인 데이터를 받음)
+          const initialCoin = message.data.find(
+            (c: any) => c.symbol?.toUpperCase() === symbol.toUpperCase()
+          )
+          
+          if (initialCoin) {
+            // 초기 코인 데이터 설정
+            const coinData: CoinData = {
+              id: initialCoin.coinId || symbol.toLowerCase(),
+              name: initialCoin.name || symbol.toUpperCase(),
+              symbol: initialCoin.symbol?.toUpperCase() || symbol.toUpperCase(),
+              price: initialCoin.price,
+              change1h: initialCoin.change1h || 0,
+              change24h: initialCoin.change24h || 0,
+              change1w: initialCoin.change1w || 0,
+              change24hValue: parseFloat((initialCoin.change24h * initialCoin.price / 100).toFixed(2)),
+              tvl: 0, // WebSocket에서 받지 않으므로 나중에 API에서 가져올 수 있음
+              marketCap: 0,
+              fdv: 0,
+              volume24h: 0,
+              description: `${initialCoin.name || symbol} is a cryptocurrency...`,
+            }
+            
+            setCoin(coinData)
+            setLoading(false)
+            // 통계는 별도 useEffect에서 API로 가져옴
+          } else {
+            // 초기 데이터에서 코인을 찾지 못한 경우
+            console.warn(`⚠️ WebSocket에서 코인 ${symbol}을 찾을 수 없음`)
+            setCoin(getFallbackCoinData(symbol))
+            setLoading(false)
+          }
         } else if (message.type === "update") {
-          handleUpdate(message.data)
+          // 가격 업데이트 수신
+          const update = message.data.find(
+            (u: any) => u.symbol?.toUpperCase() === symbol.toUpperCase()
+          )
+          
+          if (update) {
+            setCoin((prev) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                price: update.price,
+                change1h: update.change1h,
+                change24h: update.change24h,
+                change1w: update.change1w,
+                change24hValue: parseFloat((update.change24h * update.price / 100).toFixed(2)),
+              }
+            })
+          }
         }
       } catch (error) {
         console.error("WebSocket 메시지 파싱 오류:", error)
       }
-      }
-      
+    }
+
     ws.onerror = (error) => {
       console.error("WebSocket 에러:", error)
+      // 에러 시 폴백 데이터 사용
+      setCoin(getFallbackCoinData(symbol))
+      setLoading(false)
     }
-      
+
     ws.onclose = () => {
       console.log("WebSocket 연결 종료")
     }
@@ -692,7 +695,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     return () => {
       ws.close()
     }
-  }, [symbol, loading, coin])
+  }, [symbol])
 
   // 거래 내역 조회 함수
   const fetchTransactions = async () => {

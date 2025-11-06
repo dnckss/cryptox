@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { getCoinDataBySymbol, getCoinDataById } from "@/lib/mock-coins-service"
+import { getCoinDataBySymbol, getCoinDataById, syncPricesFromMaster } from "@/lib/mock-coins-service"
+
+// 마지막 동기화 시간 추적 (5초마다 동기화)
+let lastSyncTime = 0
+const SYNC_INTERVAL = 5000 // 5초
 
 // 사용자 자산 조회
 export async function GET() {
@@ -63,6 +67,13 @@ export async function GET() {
           totalCharged += Number(record.real_price)
         }
       })
+    }
+
+    // 주기적으로 WebSocket 서버에서 가격 동기화 (5초마다)
+    const now = Date.now()
+    if (now - lastSyncTime > SYNC_INTERVAL) {
+      await syncPricesFromMaster(false) // 캐시가 없을 때만 동기화
+      lastSyncTime = now
     }
 
     // 보유 코인 조회 및 현재 가치 계산

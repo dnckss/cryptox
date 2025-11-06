@@ -4,6 +4,7 @@
  */
 
 import { COIN_DEFINITIONS, MockCoin, getCoinBySymbol, getCoinById } from "./mock-coins"
+import { syncPricesFromWebSocketServer, updatePriceOnWebSocketServer } from "./utils/websocket-server-api"
 
 // 가격 히스토리 타입
 interface PriceHistory {
@@ -295,10 +296,16 @@ export function getAllCoinsData() {
 
 /**
  * 코인 가격 직접 업데이트 (관리자용)
+ * WebSocket 서버 마스터 방식: 로컬과 WebSocket 서버 모두 업데이트
  * @param symbol 코인 심볼 (소문자)
  * @param newPrice 새로운 가격
+ * @param syncToWebSocketServer WebSocket 서버에도 동기화할지 여부 (기본값: true)
  */
-export function updateCoinPrice(symbol: string, newPrice: number) {
+export async function updateCoinPrice(
+  symbol: string, 
+  newPrice: number, 
+  syncToWebSocketServer: boolean = true
+): Promise<boolean> {
   const normalizedSymbol = symbol.toLowerCase()
   const coin = getCoinBySymbol(normalizedSymbol)
   
@@ -309,7 +316,7 @@ export function updateCoinPrice(symbol: string, newPrice: number) {
   
   const now = Date.now()
   
-  // 캐시에 새 가격 직접 저장
+  // 로컬 캐시에 새 가격 직접 저장
   priceCache.set(coin.id, { price: newPrice, lastUpdate: now })
   
   // 히스토리에 추가
@@ -319,6 +326,19 @@ export function updateCoinPrice(symbol: string, newPrice: number) {
   if (!pausedFluctuations.has(coin.id)) {
     const nextChange = generateNextPriceChange(coin.id)
     nextPriceChanges.set(coin.id, nextChange)
+  }
+  
+  // WebSocket 서버에도 동기화 (마스터 방식)
+  if (syncToWebSocketServer) {
+    try {
+      const success = await updatePriceOnWebSocketServer(normalizedSymbol, newPrice)
+      if (!success) {
+        console.warn(`⚠️ WebSocket 서버 가격 업데이트 실패 (로컬은 업데이트됨): ${coin.symbol}`)
+      }
+    } catch (error) {
+      console.error(`❌ WebSocket 서버 가격 업데이트 오류:`, error)
+      // WebSocket 서버 업데이트 실패해도 로컬 업데이트는 성공으로 처리
+    }
   }
   
   console.log(`✅ 코인 가격 직접 업데이트: ${coin.symbol} → ${newPrice.toFixed(2)}원`)
@@ -407,6 +427,48 @@ export function getCoinDataById(id: string) {
   const coin = getCoinById(id)
   if (!coin) return null
   return getCoinData(coin)
+}
+
+/**
+ * WebSocket 서버에서 가격 동기화 (마스터 방식)
+ * 로컬 캐시를 WebSocket 서버의 가격으로 업데이트
+ * @param force 강제 동기화 여부 (기본값: false, 캐시가 없을 때만 동기화)
+ */
+export async function syncPricesFromMaster(force: boolean = false): Promise<number> {
+  try {
+    const priceMap = await syncPricesFromWebSocketServer()
+    
+    if (!priceMap || priceMap.size === 0) {
+      console.warn("⚠️ WebSocket 서버에서 가격을 가져올 수 없음")
+      return 0
+    }
+
+    let syncedCount = 0
+    const now = Date.now()
+
+    // 모든 코인에 대해 가격 동기화
+    for (const coin of COIN_DEFINITIONS) {
+      const normalizedSymbol = coin.symbol.toLowerCase()
+      const masterPrice = priceMap.get(normalizedSymbol)
+
+      if (masterPrice && masterPrice > 0) {
+        const cached = priceCache.get(coin.id)
+        
+        // 강제 동기화이거나 캐시가 없을 때만 업데이트
+        if (force || !cached) {
+          priceCache.set(coin.id, { price: masterPrice, lastUpdate: now })
+          addPriceToHistory(coin.id, masterPrice, now)
+          syncedCount++
+        }
+      }
+    }
+
+    console.log(`✅ WebSocket 서버에서 ${syncedCount}개 코인 가격 동기화 완료`)
+    return syncedCount
+  } catch (error) {
+    console.error("❌ WebSocket 서버 가격 동기화 오류:", error)
+    return 0
+  }
 }
 
 /**

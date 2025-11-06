@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
-import { getCoinDataBySymbol } from "@/lib/mock-coins-service"
+import { getCoinDataBySymbol, syncPricesFromMaster } from "@/lib/mock-coins-service"
+
+// 마지막 동기화 시간 추적 (5초마다 동기화)
+let lastSyncTime = 0
+const SYNC_INTERVAL = 5000 // 5초
 
 /**
  * GET /api/coins/[symbol]
  * 특정 코인의 상세 정보 가져오기 (모의 데이터)
  * 각 코인의 개별 가격 변동 타이밍을 반영하여 정확한 가격 반환
+ * WebSocket 서버 마스터 방식: 필요 시 가격 동기화
  */
 export async function GET(
   request: Request,
@@ -12,6 +17,13 @@ export async function GET(
 ) {
   try {
     const { symbol } = await params
+    
+    // 주기적으로 WebSocket 서버에서 가격 동기화 (5초마다)
+    const now = Date.now()
+    if (now - lastSyncTime > SYNC_INTERVAL) {
+      await syncPricesFromMaster(false) // 캐시가 없을 때만 동기화
+      lastSyncTime = now
+    }
     
     // 개별 코인 데이터 가져오기 (각 코인의 개별 변동 타이밍 반영)
     const coinData = getCoinDataBySymbol(symbol)
