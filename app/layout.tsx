@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import { GtagPageview } from "@/components/gtag-pageview";
 import "./globals.css";
 
@@ -42,7 +43,9 @@ export default function RootLayout({
             gtag('config', 'G-LCGB8H13K7');
           `}
         </Script>
-        <GtagPageview />
+        <Suspense fallback={null}>
+          <GtagPageview />
+        </Suspense>
         {children}
       </body>
     </html>
