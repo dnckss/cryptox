@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { trackTrade } from "@/lib/utils/gtag"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -103,12 +104,15 @@ export function OrderTicketSheet({
     setTrading(true)
     try {
       await onBuy(krwAmount)
+      // 거래 추적
+      const coinPrice = coin.price
+      const coinAmount = krwAmount / coinPrice
+      trackTrade("buy", coin.symbol, coinAmount, coinPrice)
       setBuyAmountKRW("0")
       setBuyAmount("0")
       onClose()
     } catch (error) {
       // 에러는 이미 onBuy에서 처리됨
-      console.error("구매 실패:", error)
     } finally {
       setTrading(false)
     }
@@ -129,12 +133,14 @@ export function OrderTicketSheet({
     setTrading(true)
     try {
       await onSell(coinAmount)
+      // 거래 추적
+      const coinPrice = coin.price
+      trackTrade("sell", coin.symbol, coinAmount, coinPrice)
       setSellAmount("0")
       setSellAmountKRW("0")
       onClose()
     } catch (error) {
       // 에러는 이미 onSell에서 처리됨
-      console.error("판매 실패:", error)
     } finally {
       setTrading(false)
     }

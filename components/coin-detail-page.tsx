@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TradingViewChart, type CandleDataPoint, type LineDataPoint } from "@/components/tradingview-chart"
 import { OrderTicketSheet } from "@/components/order-ticket-sheet"
 import { getWebSocketUrl } from "@/lib/utils/websocket-url"
+import { trackCoinDetail } from "@/lib/utils/gtag"
 
 interface CoinDetailPageProps {
   symbol: string
@@ -630,6 +631,9 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
           )
           
           if (initialCoin) {
+            // 코인 상세 페이지뷰 추적
+            trackCoinDetail(initialCoin.symbol?.toUpperCase() || symbol.toUpperCase())
+            
             // 초기 코인 데이터 설정
             const coinData: CoinData = {
               id: initialCoin.coinId || symbol.toLowerCase(),

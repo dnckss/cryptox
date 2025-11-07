@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { trackSearch } from "@/lib/utils/gtag"
 import { useRouter } from "next/navigation"
 import { Search, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -93,6 +94,7 @@ export function TradingPage() {
   const [timeframe, setTimeframe] = useState<"1h" | "1d" | "1w">("1d")
   const [sortBy, setSortBy] = useState<"volume" | "price" | "change">("price")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 초기 데이터는 WebSocket의 initial 메시지에서 받음 (API 호출 제거)
 
@@ -242,7 +244,18 @@ export function TradingPage() {
               type="text"
               placeholder="토큰 및 풀 검색"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                // 검색 추적 (디바운싱)
+                if (searchTimeoutRef.current) {
+                  clearTimeout(searchTimeoutRef.current)
+                }
+                if (e.target.value.trim()) {
+                  searchTimeoutRef.current = setTimeout(() => {
+                    trackSearch(e.target.value.trim())
+                  }, 500)
+                }
+              }}
               className="pl-10 bg-black/40 border-primary/20 text-white placeholder:text-gray-500"
             />
           </div>

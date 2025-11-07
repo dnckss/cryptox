@@ -4,6 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { trackLogin } from "@/lib/utils/gtag"
 import {
   Card,
   CardContent,
@@ -31,11 +32,11 @@ export function LoginForm({
       })
 
       if (error) {
-        console.error("로그인 오류:", error)
         alert("로그인에 실패했습니다. 다시 시도해주세요.")
+      } else {
+        trackLogin(provider)
       }
     } catch (err) {
-      console.error("로그인 오류:", err)
       alert("로그인에 실패했습니다. 다시 시도해주세요.")
     } finally {
       setLoading(false)
