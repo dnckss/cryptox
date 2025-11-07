@@ -105,9 +105,11 @@ export function OrderTicketSheet({
     try {
       await onBuy(krwAmount)
       // 거래 추적
-      const coinPrice = coin.price
-      const coinAmount = krwAmount / coinPrice
-      trackTrade("buy", coin.symbol, coinAmount, coinPrice)
+      if (coin) {
+        const coinPrice = coin.price
+        const coinAmount = krwAmount / coinPrice
+        trackTrade("buy", coin.symbol, coinAmount, coinPrice)
+      }
       setBuyAmountKRW("0")
       setBuyAmount("0")
       onClose()
@@ -134,8 +136,10 @@ export function OrderTicketSheet({
     try {
       await onSell(coinAmount)
       // 거래 추적
-      const coinPrice = coin.price
-      trackTrade("sell", coin.symbol, coinAmount, coinPrice)
+      if (coin) {
+        const coinPrice = coin.price
+        trackTrade("sell", coin.symbol, coinAmount, coinPrice)
+      }
       setSellAmount("0")
       setSellAmountKRW("0")
       onClose()
