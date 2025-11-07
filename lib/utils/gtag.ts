@@ -2,7 +2,7 @@
  * Google Analytics 유틸리티
  */
 
-export const GA_TRACKING_ID = "G-LCGB8H13K7"
+export const GA_TRACKING_ID = process.env.NEXT_PUBLIC_GA_ID || ""
 
 // gtag 함수 타입 정의
 declare global {
