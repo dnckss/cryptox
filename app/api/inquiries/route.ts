@@ -132,12 +132,12 @@ export async function GET() {
             .in("user_id", userIds)
 
           if (profileError) {
-            console.error("Error fetching user profiles for inquiries:", profileError)
+            // Error fetching user profiles
           }
 
           const profileMap = new Map<string, string | null>()
-          if (profiles) {
-            profiles.forEach((profile) => {
+          if (profiles && Array.isArray(profiles)) {
+            profiles.forEach((profile: { user_id: string; nickname: string | null }) => {
               profileMap.set(
                 profile.user_id,
                 typeof profile.nickname === "string" ? profile.nickname : null
