@@ -44,19 +44,15 @@ CREATE POLICY "Anyone can view active announcements" ON announcements
 
 -- RLS 정책: 관리자만 공지를 작성/수정/삭제할 수 있음
 
--- 관리자 정책 생성 (user_profiles의 is_admin 또는 관리자 이메일 확인)
+-- 관리자 정책 생성 (user_profiles의 is_admin만 확인)
+-- auth.users 접근은 RLS에서 권한이 없으므로 제거
+-- 관리자 이메일 확인은 API 레벨에서만 수행
 CREATE POLICY "Admins can insert announcements" ON announcements
   FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM user_profiles
       WHERE user_profiles.user_id = auth.uid()
       AND user_profiles.is_admin = true
-    )
-    OR
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'cryptoxmanage@gmail.com'
     )
   );
 
@@ -67,12 +63,6 @@ CREATE POLICY "Admins can update announcements" ON announcements
       WHERE user_profiles.user_id = auth.uid()
       AND user_profiles.is_admin = true
     )
-    OR
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'cryptoxmanage@gmail.com'
-    )
   );
 
 CREATE POLICY "Admins can delete announcements" ON announcements
@@ -81,12 +71,6 @@ CREATE POLICY "Admins can delete announcements" ON announcements
       SELECT 1 FROM user_profiles
       WHERE user_profiles.user_id = auth.uid()
       AND user_profiles.is_admin = true
-    )
-    OR
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'cryptoxmanage@gmail.com'
     )
   );
 

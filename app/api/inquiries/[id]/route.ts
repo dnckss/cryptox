@@ -4,10 +4,10 @@ import { isAdmin } from "@/lib/utils/admin"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 
 /**
- * DELETE /api/announcements/[id]
- * 공지 삭제 (관리자만)
+ * PATCH /api/inquiries/[id]
+ * 문의 답변 (관리자만)
  */
-export async function DELETE(
+export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -34,9 +34,17 @@ export async function DELETE(
     }
 
     const { id } = await params
+    const body = await request.json()
+    const { admin_response, status } = body
 
-    // 공지 삭제 (Service Role Key 사용하여 RLS 우회)
-    // Vercel에서는 RLS 정책이 엄격하게 적용되므로 Service Role Key를 항상 사용
+    if (!admin_response || !admin_response.trim()) {
+      return NextResponse.json(
+        { error: "Admin response is required" },
+        { status: 400 }
+      )
+    }
+
+    // 문의 답변 업데이트 (Service Role Key 사용하여 RLS 우회)
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
     if (!supabaseServiceKey) {
@@ -47,31 +55,37 @@ export async function DELETE(
       )
     }
 
-    // Service Role Key로 RLS 우회하여 공지 삭제
     const adminSupabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       supabaseServiceKey
     )
 
-    const { error } = await adminSupabase
-      .from("announcements")
-      .delete()
+    const { data: inquiry, error } = await adminSupabase
+      .from("inquiries")
+      .update({
+        admin_response: admin_response.trim(),
+        admin_id: user.id,
+        status: status || "answered",
+        answered_at: new Date().toISOString(),
+      })
       .eq("id", id)
+      .select()
+      .single()
 
     if (error) {
-      console.error("Error deleting announcement:", error)
+      console.error("Error updating inquiry:", error)
       return NextResponse.json(
-        { error: "Failed to delete announcement" },
+        { error: "Failed to update inquiry" },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      message: "Announcement deleted successfully",
+      data: inquiry,
     })
   } catch (error) {
-    console.error("Error in DELETE /api/announcements/[id]:", error)
+    console.error("Error in PATCH /api/inquiries/[id]:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

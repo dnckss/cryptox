@@ -185,7 +185,7 @@ export function AnnouncementNotification() {
               variant="ghost"
               size="sm"
               onClick={handleClick}
-              className="text-xs text-white hover:text-white/80 hover:bg-white/10 h-6 px-2"
+              className="text-xs text-white hover:text-white/80 hover:bg-black/40 h-6 px-2"
             >
               자세히 보기
             </Button>
@@ -194,7 +194,7 @@ export function AnnouncementNotification() {
             variant="ghost"
             size="sm"
             onClick={() => handleDismiss(announcement.id)}
-            className="flex-shrink-0 text-white hover:text-white/80 hover:bg-white/10 h-6 w-6 p-0"
+            className="flex-shrink-0 text-white hover:text-white/80 hover:bg-black/40 h-6 w-6 p-0"
           >
             <X className="w-4 h-4" />
           </Button>

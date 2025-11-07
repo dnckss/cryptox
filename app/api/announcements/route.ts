@@ -96,46 +96,33 @@ export async function POST(request: Request) {
     }
 
     // 공지 작성 (Service Role Key 사용하여 RLS 우회)
+    // Vercel에서는 RLS 정책이 엄격하게 적용되므로 Service Role Key를 항상 사용
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    let announcement
-    let error
-
-    if (supabaseServiceKey) {
-      // Service Role Key로 RLS 우회하여 공지 작성
-      const adminSupabase = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        supabaseServiceKey
+    
+    if (!supabaseServiceKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY is not set")
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 }
       )
-
-      const result = await adminSupabase
-        .from("announcements")
-        .insert({
-          title: title.trim(),
-          content: content.trim(),
-          author_id: user.id,
-          is_active: true,
-        })
-        .select()
-        .single()
-
-      announcement = result.data
-      error = result.error
-    } else {
-      // Service Role Key가 없으면 일반 클라이언트 사용
-      const result = await supabase
-        .from("announcements")
-        .insert({
-          title: title.trim(),
-          content: content.trim(),
-          author_id: user.id,
-          is_active: true,
-        })
-        .select()
-        .single()
-
-      announcement = result.data
-      error = result.error
     }
+
+    // Service Role Key로 RLS 우회하여 공지 작성
+    const adminSupabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseServiceKey
+    )
+
+    const { data: announcement, error } = await adminSupabase
+      .from("announcements")
+      .insert({
+        title: title.trim(),
+        content: content.trim(),
+        author_id: user.id,
+        is_active: true,
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error("Error creating announcement:", error)

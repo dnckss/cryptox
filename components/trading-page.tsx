@@ -103,7 +103,7 @@ export function TradingPage() {
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log("✅ 거래 페이지 WebSocket 연결 성공")
+      // WebSocket connected
     }
 
     ws.onmessage = (event) => {
@@ -132,7 +132,6 @@ export function TradingPage() {
             setCoins(formattedCoins)
             setLoading(false)
           } else {
-            console.warn("⚠️ WebSocket에서 코인 데이터를 받지 못함")
             setCoins([])
             setLoading(false)
           }
@@ -161,18 +160,17 @@ export function TradingPage() {
           )
         }
       } catch (error) {
-        console.error("WebSocket 메시지 파싱 오류:", error)
+        // Error parsing WebSocket message
       }
     }
 
     ws.onerror = (error) => {
-      console.error("WebSocket 에러:", error)
       setCoins([])
       setLoading(false)
     }
 
     ws.onclose = () => {
-      console.log("WebSocket 연결 종료")
+      // WebSocket closed
     }
 
     return () => {
