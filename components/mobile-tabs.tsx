@@ -18,7 +18,7 @@ export function MobileTabs() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 w-full h-14 bg-card border-t border-primary/20 z-30 lg:hidden overscroll-contain"
+      className="fixed bottom-0 left-0 right-0 w-full h-14 bg-black/90 backdrop-blur-sm border-t border-primary/20 z-30 lg:hidden overscroll-contain"
       aria-label="하단 네비게이션"
     >
       <div className="grid grid-cols-5 h-full">

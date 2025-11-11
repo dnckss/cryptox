@@ -214,31 +214,27 @@ export function TradingPage() {
 
   if (loading) {
     return (
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-400">로딩 중...</p>
-          </div>
-        </div>
-      </main>
+      <div className="flex items-center justify-center py-16">
+        <p className="text-gray-400">로딩 중...</p>
+      </div>
     )
   }
 
   return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-      <div className="max-w-7xl mx-auto">
-        {/* 헤더 */}
-        <div className="mb-6 lg:mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">거래</h1>
-          <p className="text-gray-400">시장 데이터와 코인 정보를 확인하세요</p>
-        </div>
+    <div className="space-y-6 sm:space-y-8">
+      {/* 헤더 */}
+      <header className="space-y-2">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
+          거래
+        </h1>
+        <p className="text-sm sm:text-base text-gray-400">
+          시장 데이터와 코인 정보를 확인하세요
+        </p>
+      </header>
 
-        {/* 통계 카드 */}
-       
-
-        {/* 검색 및 필터 */}
-        <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative flex-1 max-w-md">
+      {/* 검색 및 필터 */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="relative flex-1 md:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
               type="text"
@@ -258,190 +254,189 @@ export function TradingPage() {
               }}
               className="pl-10 bg-black/40 border-primary/20 text-white placeholder:text-gray-500"
             />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant={timeframe === "1h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeframe("1h")}
-              className={cn(
-                timeframe === "1h"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
-              )}
-            >
-              1시간
-            </Button>
-            <Button
-              variant={timeframe === "1d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeframe("1d")}
-              className={cn(
-                timeframe === "1d"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
-              )}
-            >
-              1일
-            </Button>
-            <Button
-              variant={timeframe === "1w" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeframe("1w")}
-              className={cn(
-                timeframe === "1w"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
-              )}
-            >
-              1주
-            </Button>
-          </div>
         </div>
 
-        {/* 코인 테이블 - 데스크톱 */}
-        <div className="hidden lg:block rounded-xl border border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-primary/20">
-                  <th className="text-left p-4 text-gray-400 font-medium text-sm">#</th>
-                  <th className="text-left p-4 text-gray-400 font-medium text-sm">토큰 이름</th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">가격</th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">1시간</th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">1일</th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">1주</th>
-                  <th className="text-right p-4 text-gray-400 font-medium text-sm">FDV</th>
-                  <th
-                    className="text-right p-4 text-gray-400 font-medium text-sm cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => {
-                      if (sortBy === "volume") {
-                        setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                      } else {
-                        setSortBy("volume")
-                        setSortOrder("desc")
-                      }
-                    }}
+        <div className="flex gap-2">
+          <Button
+            variant={timeframe === "1h" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTimeframe("1h")}
+            className={cn(
+              timeframe === "1h"
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
+            )}
+          >
+            1시간
+          </Button>
+          <Button
+            variant={timeframe === "1d" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTimeframe("1d")}
+            className={cn(
+              timeframe === "1d"
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
+            )}
+          >
+            1일
+          </Button>
+          <Button
+            variant={timeframe === "1w" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTimeframe("1w")}
+            className={cn(
+              timeframe === "1w"
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent border-primary/20 text-white hover:bg-primary/10"
+            )}
+          >
+            1주
+          </Button>
+        </div>
+      </div>
+
+      {/* 코인 테이블 - 데스크톱 */}
+      <div className="hidden lg:block rounded-xl border border-primary/20 bg-black/40 backdrop-blur-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-primary/20">
+                <th className="text-left p-4 text-gray-400 font-medium text-sm">#</th>
+                <th className="text-left p-4 text-gray-400 font-medium text-sm">토큰 이름</th>
+                <th className="text-right p-4 text-gray-400 font-medium text-sm">가격</th>
+                <th className="text-right p-4 text-gray-400 font-medium text-sm">1시간</th>
+                <th className="text-right p-4 text-gray-400 font-medium text-sm">1일</th>
+                <th className="text-right p-4 text-gray-400 font-medium text-sm">1주</th>
+                <th className="text-right p-4 text-gray-400 font-medium text-sm">FDV</th>
+                <th
+                  className="text-right p-4 text-gray-400 font-medium text-sm cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => {
+                    if (sortBy === "volume") {
+                      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                    } else {
+                      setSortBy("volume")
+                      setSortOrder("desc")
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    거래량
+                    {sortBy === "volume" && (
+                      <span className="text-primary">
+                        {sortOrder === "desc" ? "↓" : "↑"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCoins.map((coin, index) => {
+                const change1h = coin.change1h
+                const change1d = coin.change1d
+                const change1w = coin.change1w
+
+                return (
+                  <tr
+                    key={coin.id}
+                    onClick={() => router.push(`/dashboard/coin/${coin.symbol.toLowerCase()}`)}
+                    className="border-b border-primary/10 hover:bg-primary/5 transition-colors cursor-pointer group"
                   >
-                    <div className="flex items-center justify-end gap-1">
-                      거래량
-                      {sortBy === "volume" && (
-                        <span className="text-primary">
-                          {sortOrder === "desc" ? "↓" : "↑"}
+                    <td className="p-4 text-gray-400">{index + 1}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
+                          <span className="text-sm font-bold text-primary">
+                            {coin.icon}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{coin.name}</p>
+                          <p className="text-gray-400 text-sm">{coin.symbol}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <p className="text-white font-semibold tabular-nums">
+                        {coin.price < 1 
+                          ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}`
+                          : coin.price < 1000
+                          ? `₩${coin.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                          : `₩${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        }
+                      </p>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1",
+                          change1h >= 0 ? "text-green-400" : "text-red-400"
+                        )}
+                      >
+                        {change1h >= 0 ? (
+                          <ArrowUp className="w-4 h-4" />
+                        ) : (
+                          <ArrowDown className="w-4 h-4" />
+                        )}
+                        <span className="font-medium tabular-nums">
+                          {change1h >= 0 ? "+" : ""}
+                          {change1h.toFixed(2)}%
                         </span>
-                      )}
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCoins.map((coin, index) => {
-                  const change1h = coin.change1h
-                  const change1d = coin.change1d
-                  const change1w = coin.change1w
-                  const currentChange = getChangeValue(coin)
-
-                  return (
-                    <tr
-                      key={coin.id}
-                      onClick={() => router.push(`/dashboard/coin/${coin.symbol.toLowerCase()}`)}
-                      className="border-b border-primary/10 hover:bg-primary/5 transition-colors cursor-pointer group"
-                    >
-                      <td className="p-4 text-gray-400">{index + 1}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
-                            <span className="text-sm font-bold text-primary">
-                              {coin.icon}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">{coin.name}</p>
-                            <p className="text-gray-400 text-sm">{coin.symbol}</p>
-                          </div>
-                        </div>
-                      </td>
-                        <td className="p-4 text-right">
-                          <p className="text-white font-semibold tabular-nums">
-                            {coin.price < 1 
-                              ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}` // 소수점 8자리까지, 끝의 0 제거
-                              : coin.price < 1000
-                              ? `₩${coin.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-                              : `₩${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}` // 1000원 이상은 정수
-                            }
-                          </p>
-                        </td>
-                      <td className="p-4 text-right">
-                        <div
-                          className={cn(
-                            "flex items-center justify-end gap-1",
-                            change1h >= 0 ? "text-green-400" : "text-red-400"
-                          )}
-                        >
-                          {change1h >= 0 ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          )}
-                          <span className="font-medium tabular-nums">
-                            {change1h >= 0 ? "+" : ""}
-                            {change1h.toFixed(2)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div
-                          className={cn(
-                            "flex items-center justify-end gap-1",
-                            change1d >= 0 ? "text-green-400" : "text-red-400"
-                          )}
-                        >
-                          {change1d >= 0 ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          )}
-                          <span className="font-medium tabular-nums">
-                            {change1d >= 0 ? "+" : ""}
-                            {change1d.toFixed(2)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div
-                          className={cn(
-                            "flex items-center justify-end gap-1",
-                            change1w >= 0 ? "text-green-400" : "text-red-400"
-                          )}
-                        >
-                          {change1w >= 0 ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          )}
-                          <span className="font-medium tabular-nums">
-                            {change1w >= 0 ? "+" : ""}
-                            {change1w.toFixed(2)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right text-gray-400 tabular-nums">
-                        ₩{(coin.fdv / 1_000_000_000).toFixed(2)}B
-                      </td>
-                      <td className="p-4 text-right text-gray-400 tabular-nums">
-                        ₩{(coin.volume24h / 1_000_000).toFixed(0)}M
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1",
+                          change1d >= 0 ? "text-green-400" : "text-red-400"
+                        )}
+                      >
+                        {change1d >= 0 ? (
+                          <ArrowUp className="w-4 h-4" />
+                        ) : (
+                          <ArrowDown className="w-4 h-4" />
+                        )}
+                        <span className="font-medium tabular-nums">
+                          {change1d >= 0 ? "+" : ""}
+                          {change1d.toFixed(2)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1",
+                          change1w >= 0 ? "text-green-400" : "text-red-400"
+                        )}
+                      >
+                        {change1w >= 0 ? (
+                          <ArrowUp className="w-4 h-4" />
+                        ) : (
+                          <ArrowDown className="w-4 h-4" />
+                        )}
+                        <span className="font-medium tabular-nums">
+                          {change1w >= 0 ? "+" : ""}
+                          {change1w.toFixed(2)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right text-gray-400 tabular-nums">
+                      ₩{(coin.fdv / 1_000_000_000).toFixed(2)}B
+                    </td>
+                    <td className="p-4 text-right text-gray-400 tabular-nums">
+                      ₩{(coin.volume24h / 1_000_000).toFixed(0)}M
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        {/* 코인 카드 - 모바일 */}
-        <div className="lg:hidden space-y-3">
+      {/* 코인 카드 - 모바일 */}
+      <div className="lg:hidden space-y-3">
           {sortedCoins.map((coin, index) => {
             const change1d = coin.change1d
             return (
@@ -499,7 +494,7 @@ export function TradingPage() {
           })}
         </div>
       </div>
-    </main>
+    
   )
 }
 

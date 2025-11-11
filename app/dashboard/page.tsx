@@ -16,23 +16,32 @@ export default async function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-          {/* 헤더 */}
-        <div className="mb-8 lg:mb-12">
-          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">대시보드</h1>
-            <p className="text-gray-400">내 자산과 시장 동향을 한눈에 확인하세요</p>
-          </div>
-          
-          {/* 내 자산 요약 */}
-          <PortfolioSummary />
+      <section className="space-y-6 sm:space-y-8">
+        {/* 헤더 */}
+        <header className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
+            대시보드
+          </h1>
+          <p className="text-sm sm:text-base text-gray-400">
+            내 자산과 시장 동향을 한눈에 확인하세요
+          </p>
+        </header>
 
-          {/* 보유 코인 */}
-          <div className="mb-6">
-          <h2 className="text-xl lg:text-2xl font-semibold text-white mb-6">보유 코인</h2>
-            <HoldingsList />
+        {/* 내 자산 요약 */}
+        <PortfolioSummary />
+
+        {/* 보유 코인 */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white">보유 코인</h2>
+            <p className="text-xs sm:text-sm text-gray-500">
+              실시간 가격과 손익을 확인하세요
+            </p>
           </div>
-        </div>
-      
+          <HoldingsList />
+        </section>
+      </section>
+
       {/* 환영 팝업 */}
       <WelcomePopup />
     </AppLayout>

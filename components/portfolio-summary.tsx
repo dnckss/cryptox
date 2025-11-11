@@ -120,27 +120,27 @@ export function PortfolioSummary() {
   }
 
   return (
-    <div className="mb-12">
+    <div className="space-y-6 sm:space-y-8">
       {/* 메인 총 자산 카드 */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-8 mb-8 backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 backdrop-blur-sm">
         <div className="relative z-10">
-          <p className="text-sm text-gray-400 mb-2">총 자산 가치</p>
-          <p className="text-5xl font-bold text-white mb-4">
+          <p className="text-xs sm:text-sm text-gray-400 mb-2">총 자산 가치</p>
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
             ₩{Math.round(totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full ${
                 isPositive ? "bg-green-500/20" : "bg-red-500/20"
               }`}
             >
               {isPositive ? (
-                <TrendingUp className="w-4 h-4 text-green-400" />
+                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-red-400" />
+                <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
               )}
               <span
-                className={`text-sm font-semibold ${
+                className={`text-xs sm:text-sm font-semibold ${
                   isPositive ? "text-green-400" : "text-red-400"
                 }`}
               >
@@ -148,35 +148,35 @@ export function PortfolioSummary() {
                 {profitPercent}%
               </span>
             </div>
-            <span className="text-gray-400 text-sm">
+            <span className="text-gray-400 text-xs sm:text-sm">
               {isPositive ? "+" : ""}₩{Math.round(profit).toLocaleString(undefined, { maximumFractionDigits: 0 })} 수익
             </span>
           </div>
         </div>
         {/* 그라데이션 오버레이 */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 bg-primary/10 rounded-full blur-3xl" />
       </div>
 
       {/* 통계 카드들 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-primary/20 bg-black/40 p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-xl border border-primary/20 bg-black/40 p-5 sm:p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
           <div className="mb-3">
-            <p className="text-sm text-gray-400 mb-2">초기 자본금</p>
+            <p className="text-xs sm:text-sm text-gray-400 mb-2">초기 자본금</p>
           </div>
-          <p className="text-5xl font-bold text-white mb-4">
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
             ₩{Math.round(initialBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
         </div>
 
-        <div className="rounded-xl border border-primary/20 bg-black/40 p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-primary" />
+        <div className="rounded-xl border border-primary/20 bg-black/40 p-5 sm:p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <p className="text-sm text-gray-400">총 수익</p>
+            <p className="text-xs sm:text-sm text-gray-400">총 수익</p>
           </div>
           <p
-            className={`text-2xl font-bold ${
+            className={`text-xl sm:text-2xl font-bold ${
               isPositive ? "text-green-400" : "text-red-400"
             }`}
           >
@@ -184,15 +184,15 @@ export function PortfolioSummary() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-primary/20 bg-black/40 p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary" />
+        <div className="rounded-xl border border-primary/20 bg-black/40 p-5 sm:p-6 hover:bg-black/60 transition-colors backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <p className="text-sm text-gray-400">보유 코인</p>
+            <p className="text-xs sm:text-sm text-gray-400">보유 코인</p>
           </div>
-          <p className="text-2xl font-bold text-white">{coinCount}</p>
-          <p className="text-sm text-gray-400 mt-1">종목</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">{coinCount}</p>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">종목</p>
         </div>
       </div>
     </div>

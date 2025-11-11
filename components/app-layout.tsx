@@ -23,8 +23,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* 데스크톱 레이아웃 */}
       <div className="hidden lg:flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-8 overflow-y-auto pb-20">
-          {children}
+        <main className="flex-1 overflow-y-auto pb-20">
+          <div className="w-full max-w-6xl xl:max-w-7xl mx-auto px-6 lg:px-8 xl:px-10 py-8">
+            {children}
+          </div>
         </main>
       </div>
 
@@ -48,7 +50,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* 메인 콘텐츠 */}
         <main className="flex-1 overflow-y-auto pb-16 overscroll-contain">
-          {children}
+          <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6">
+            {children}
+          </div>
         </main>
 
         {/* 하단 탭바 */}

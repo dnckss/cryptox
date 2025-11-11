@@ -753,72 +753,69 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
     })
   }
 
-  if (loading) {
-    return (
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-400">로딩 중...</p>
-          </div>
-        </div>
-      </main>
-    )
-  }
+if (loading) {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <p className="text-gray-400">로딩 중...</p>
+    </div>
+  )
+}
 
   const isPositive = coin.change24h >= 0
 
 
   return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-20 lg:pb-8">
-      <div className="max-w-7xl mx-auto">
-        {/* 브레드크럼 및 헤더 */}
-        <div className="mb-4 lg:mb-6">
-          <div className="flex items-center gap-3 mb-3 lg:mb-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-              className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]"
-              aria-label="뒤로가기"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="hidden sm:flex items-center gap-1 text-sm text-gray-400">
-              <Link href="/dashboard/trading" className="hover:text-white transition-colors flex items-center">
-                탐색
-              </Link>
-              <span className="flex items-center">/</span>
-              <span className="flex items-center">토큰</span>
-              <span className="flex items-center">/</span>
-              <span className="text-white flex items-center">{coin.symbol}</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-lg sm:text-xl font-bold text-primary">{coin.symbol[0]}</span>
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">{coin.name}</h1>
-                <p className="text-gray-400 text-sm">{coin.symbol}</p>
-              </div>
-            </div>
-            <div className="hidden lg:flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]">
-                <Settings className="w-5 h-5" />
-              </Button>
-            </div>
+    <div className="space-y-6 sm:space-y-8">
+      {/* 브레드크럼 및 헤더 */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="hidden sm:flex items-center gap-1 text-sm text-gray-400">
+            <Link href="/dashboard/trading" className="hover:text-white transition-colors flex items-center">
+              탐색
+            </Link>
+            <span className="flex items-center">/</span>
+            <span className="flex items-center">토큰</span>
+            <span className="flex items-center">/</span>
+            <span className="text-white flex items-center">{coin.symbol}</span>
           </div>
         </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
+              <span className="text-lg sm:text-xl font-bold text-primary">{coin.symbol[0]}</span>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
+                {coin.name}
+              </h1>
+              <p className="text-gray-400 text-sm sm:text-base">{coin.symbol}</p>
+            </div>
+          </div>
+          <div className="hidden lg:flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-primary/10 min-w-[44px] min-h-[44px]">
+              <Settings className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* 왼쪽 컬럼 (차트, 통계, 트랜잭션 풀) */}
-          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* 왼쪽 컬럼 (차트, 통계, 트랜잭션 풀) */}
+        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
             {/* 가격 및 차트 */}
-            <Card className="bg-transparent border-primary/20">
-              <CardContent className="p-6">
-                <div className="mb-6">
-                  <p className="text-4xl font-bold text-white mb-2">
+          <Card className="bg-transparent border-primary/20">
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-4 sm:mb-6">
+                <p className="text-3xl sm:text-4xl font-bold text-white mb-2 leading-tight">
                     {coin.price < 1 
                       ? `₩${coin.price.toFixed(8).replace(/\.?0+$/, '')}`
                       : coin.price < 1000
@@ -828,7 +825,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                   </p>
                   <div className={cn("flex items-center gap-2", isPositive ? "text-green-400" : "text-red-400")}>
                     {isPositive ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
-                    <span className="text-lg font-semibold">
+                  <span className="text-base sm:text-lg font-semibold">
                       {isPositive ? "+" : ""}₩{Math.abs(coin.change24hValue).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({coin.change24h.toFixed(2)}%)
                     </span>
                   </div>
@@ -839,7 +836,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                   <button
                     onClick={() => setChartType("line")}
                     className={cn(
-                      "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                    "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
                       chartType === "line"
                         ? "bg-primary text-primary-foreground"
                         : "bg-transparent text-gray-400 hover:text-white hover:bg-primary/10"
@@ -850,7 +847,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                   <button
                     onClick={() => setChartType("candlestick")}
                     className={cn(
-                      "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                    "px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
                       chartType === "candlestick"
                         ? "bg-primary text-primary-foreground"
                         : "bg-transparent text-gray-400 hover:text-white hover:bg-primary/10"
@@ -861,7 +858,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                 </div>
 
                 {/* 차트 영역 */}
-                <div className="relative h-80 sm:h-[320px] mb-4 overflow-hidden chart-container">
+              <div className="relative h-64 sm:h-[320px] mb-4 overflow-hidden chart-container">
                   {chartLoading ? (
                     <div className="flex items-center justify-center h-full">
                       <p className="text-gray-400">차트 로딩 중...</p>
@@ -908,7 +905,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                       {tf}
                     </Button>
                   ))}
-                  <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto hidden md:flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
                       <ChevronUp className="w-4 h-4" />
                     </Button>
@@ -921,15 +918,15 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
             </Card>
 
             {/* 통계 */}
-            <Card className="bg-transparent border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-white">통계</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-transparent border-primary/20">
+            <CardHeader className="px-5 sm:px-6 pb-2">
+              <CardTitle className="text-white text-lg">통계</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 sm:px-6 pb-6">
+              <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-400 mb-1">TVL</p>
-                    <p className="text-xl font-semibold text-white">
+                  <p className="text-xs sm:text-sm text-gray-400 mb-1">TVL</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
                       {fixedStats && fixedStats.tvl >= 1_000_000_000_000
                         ? `₩${(fixedStats.tvl / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.tvl >= 1_000_000_000
@@ -942,8 +939,8 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400 mb-1">시가총액</p>
-                    <p className="text-xl font-semibold text-white">
+                  <p className="text-xs sm:text-sm text-gray-400 mb-1">시가총액</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
                       {fixedStats && fixedStats.marketCap >= 1_000_000_000_000
                         ? `₩${(fixedStats.marketCap / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.marketCap >= 1_000_000_000
@@ -956,8 +953,8 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400 mb-1">FDV</p>
-                    <p className="text-xl font-semibold text-white">
+                  <p className="text-xs sm:text-sm text-gray-400 mb-1">FDV</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
                       {fixedStats && fixedStats.fdv >= 1_000_000_000_000
                         ? `₩${(fixedStats.fdv / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.fdv >= 1_000_000_000
@@ -970,8 +967,8 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400 mb-1">1일 거래량</p>
-                    <p className="text-xl font-semibold text-white">
+                  <p className="text-xs sm:text-sm text-gray-400 mb-1">1일 거래량</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
                       {fixedStats && fixedStats.volume24h >= 1_000_000_000_000
                         ? `₩${(fixedStats.volume24h / 1_000_000_000_000).toFixed(2)}T`
                         : fixedStats && fixedStats.volume24h >= 1_000_000_000
@@ -988,11 +985,11 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
             </Card>
 
             {/* 트랜잭션 풀 */}
-            <Card className="bg-transparent border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-white">트랜잭션 풀</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card className="bg-transparent border-primary/20">
+            <CardHeader className="px-5 sm:px-6 pb-2">
+              <CardTitle className="text-white text-lg">트랜잭션 풀</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 sm:px-6 pb-6">
                 {transactionsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <p className="text-gray-400">거래 내역을 불러오는 중...</p>
@@ -1329,7 +1326,7 @@ export function CoinDetailPage({ symbol }: CoinDetailPageProps) {
           />
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 

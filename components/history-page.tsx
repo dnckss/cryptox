@@ -103,29 +103,28 @@ export function HistoryPage() {
 
   if (loading) {
     return (
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-400">로딩 중...</p>
-          </div>
-        </div>
-      </main>
+      <div className="flex items-center justify-center py-16">
+        <p className="text-gray-400">로딩 중...</p>
+      </div>
     )
   }
 
   return (
-    <main className="flex-1 p-8 overflow-y-auto">
-      <div className="max-w-7xl mx-auto">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">거래 내역</h1>
-          <p className="text-gray-400">모든 구매 및 판매 기록을 확인하세요</p>
-        </div>
+    <div className="space-y-6 sm:space-y-8">
+      {/* 헤더 */}
+      <header className="space-y-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+          거래 내역
+        </h1>
+        <p className="text-sm sm:text-base text-gray-400">
+          모든 구매 및 판매 기록을 확인하세요
+        </p>
+      </header>
 
-        {/* 검색 및 필터 */}
-        <Card className="bg-transparent border-primary/20 mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
+      {/* 검색 및 필터 */}
+      <Card className="bg-transparent border-primary/20">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col md:flex-row gap-4">
               {/* 검색 */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -139,7 +138,7 @@ export function HistoryPage() {
               </div>
 
               {/* 타입 필터 */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 md:self-start">
                 <Button
                   variant={filterType === "all" ? "default" : "outline"}
                   size="sm"
@@ -179,28 +178,30 @@ export function HistoryPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+      </Card>
 
-        {/* 거래 내역 리스트 */}
-        <Card className="bg-transparent border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-white">
-              거래 내역 ({filteredTransactions.length}건)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredTransactions.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-400 mb-4">거래 내역이 없습니다</p>
-                <Button
-                  onClick={() => router.push("/dashboard/trading")}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  거래하기
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
+      {/* 거래 내역 리스트 */}
+      <Card className="bg-transparent border-primary/20">
+        <CardHeader className="px-4 sm:px-6 pb-2 sm:pb-4">
+          <CardTitle className="text-white text-lg sm:text-xl">
+            거래 내역 ({filteredTransactions.length}건)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 sm:px-6 pb-6">
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <p className="text-gray-400 mb-4">거래 내역이 없습니다</p>
+              <Button
+                onClick={() => router.push("/dashboard/trading")}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                거래하기
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* 데스크톱 테이블 */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-primary/20">
@@ -294,11 +295,85 @@ export function HistoryPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+
+              {/* 모바일 카드 */}
+              <div className="lg:hidden divide-y divide-primary/10">
+                {filteredTransactions.map((tx) => {
+                  const isBuy = tx.type === "buy"
+                  return (
+                    <div key={tx.id} className="px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
+                            <span className="text-xs font-bold text-primary">
+                              {tx.coinSymbol[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-white font-medium text-sm">{tx.coinName}</p>
+                            <p className="text-gray-500 text-xs">{formatDate(tx.createdAt)}</p>
+                          </div>
+                        </div>
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                            isBuy ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                          )}
+                        >
+                          {isBuy ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                          {isBuy ? "구매" : "판매"}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div className="text-gray-400">
+                          <p className="text-xs">수량</p>
+                          <p className="text-white font-medium">
+                            {tx.amount < 1
+                              ? tx.amount.toFixed(6).replace(/\.?0+$/, "")
+                              : tx.amount.toLocaleString(undefined, {
+                                  maximumFractionDigits: 2,
+                                })}
+                          </p>
+                        </div>
+                        <div className="text-gray-400 text-right">
+                          <p className="text-xs">가격</p>
+                          <p className="text-white font-medium">
+                            {tx.price < 1
+                              ? `₩${tx.price.toFixed(6).replace(/\.?0+$/, "")}`
+                              : `₩${tx.price.toLocaleString(undefined, {
+                                  maximumFractionDigits: 0,
+                                })}`}
+                          </p>
+                        </div>
+                        <div className="col-span-2 flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-400">총액</p>
+                            <p className="text-lg font-semibold text-white">
+                              ₩{tx.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              router.push(`/dashboard/coin/${tx.coinSymbol.toLowerCase()}`)
+                            }
+                            className="text-primary hover:text-primary/80 hover:bg-primary/10"
+                          >
+                            상세보기
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
